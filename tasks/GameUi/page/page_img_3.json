@@ -29,7 +29,7 @@
   {
     "itemName": "main_goto_daily",
     "imageName": "page_main_goto_daily.png",
-    "roiFront": "779,612,51,67",
+    "roiFront": "779,612,44,50",
     "roiBack": "754,595,89,97",
     "method": "Template matching",
     "threshold": 0.7,
@@ -38,8 +38,8 @@
   {
     "itemName": "main_goto_mall",
     "imageName": "page_main_goto_mall.png",
-    "roiFront": "663,661,41,22",
-    "roiBack": "644,613,81,78",
+    "roiFront": "670,610,37,47",
+    "roiBack": "670,610,80,80",
     "method": "Template matching",
     "threshold": 0.7,
     "description": "description"
@@ -47,7 +47,7 @@
   {
     "itemName": "main_goto_guild",
     "imageName": "page_main_goto_guild.png",
-    "roiFront": "544,611,50,47",
+    "roiFront": "544,611,50,22",
     "roiBack": "520,583,99,105",
     "method": "Template matching",
     "threshold": 0.7,
