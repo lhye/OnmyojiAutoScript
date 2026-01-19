@@ -11,10 +11,10 @@
   {
     "itemName": "main_goto_onmyodo",
     "imageName": "page_main_goto_onmyodo.png",
-    "roiFront": "960,590,51,60",
+    "roiFront": "960,590,39,36",
     "roiBack": "960,590,120,100",
     "method": "Template matching",
-    "threshold": 0.8,
+    "threshold": 0.5,
     "description": "description"
   },
   {
@@ -38,10 +38,10 @@
   {
     "itemName": "main_goto_mall",
     "imageName": "page_main_goto_mall.png",
-    "roiFront": "620,590,37,47",
+    "roiFront": "620,590,33,35",
     "roiBack": "620,590,120,100",
     "method": "Template matching",
-    "threshold": 0.5,
+    "threshold": 0.7,
     "description": "description"
   },
   {
