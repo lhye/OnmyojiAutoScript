@@ -121,7 +121,7 @@ page_duel.link(button=G.I_BACK_YOLLOW, destination=page_town)
 page_town.link(button=G.I_TOWN_GOTO_DUEL, destination=page_duel)
 # 逢魔之时 demon_encounter
 page_demon_encounter = Page(G.I_CHECK_DEMON_ENCOUNTER)
-page_demon_encounter.link(button=G.I_DEMON_ENCOUNTER_GOTO_TOWN, destination=page_town)
+page_demon_encounter.link(button=G.I_BACK_YOLLOW, destination=page_town)
 page_town.link(button=G.I_TOWN_GOTO_DEMON_ENCOUNTER, destination=page_demon_encounter)
 # 狩猎战 hunt
 page_hunt = Page(G.I_CHECK_HUNT)
