@@ -11,8 +11,8 @@
   {
     "itemName": "side_check_special",
     "imageName": "navbar_side_check_special.png",
-    "roiFront": "215,7,42,42",
-    "roiBack": "215,7,42,42",
+    "roiFront": "120,7,42,42",
+    "roiBack": "120,7,100,100",
     "method": "Template matching",
     "threshold": 0.7,
     "description": "特殊"
@@ -29,8 +29,8 @@
   {
     "itemName": "side_check_honor",
     "imageName": "navbar_side_check_honor.png",
-    "roiFront": "752,11,41,42",
-    "roiBack": "752,11,41,42",
+    "roiFront": "700,11,41,42",
+    "roiBack": "700,11,100,100",
     "method": "Template matching",
     "threshold": 0.7,
     "description": "荣誉"
