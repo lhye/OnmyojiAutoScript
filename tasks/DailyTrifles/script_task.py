@@ -164,6 +164,8 @@ class ScriptTask(GameUi, Summon, DailyTriflesAssets):
                 continue
             if self.appear_then_click(self.I_LUCK_MSG, interval=1):
                 continue
+            if self.appear_then_click(self.I_LUCK_MSG_2, interval=1):
+                continue
         logger.info('Start luck msg')
         check_timer = Timer(2)
         check_timer.start()
