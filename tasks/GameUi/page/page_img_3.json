@@ -29,7 +29,7 @@
   {
     "itemName": "main_goto_daily",
     "imageName": "page_main_goto_daily.png",
-    "roiFront": "765,616,63,38",
+    "roiFront": "735,590,33,35",
     "roiBack": "735,590,120,100",
     "method": "Template matching",
     "threshold": 0.6,

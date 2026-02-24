@@ -297,43 +297,51 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets):
         logger.info('One key harvest found')
         self._one_key_harvest_done = True
         
-        self.appear_then_click(self.I_HARVEST_ONE_KEY, interval=1)
-        logger.info('Click one key harvest button')
+        while 1:
+            self.screenshot()
+            if self.appear(self.I_HARVEST_ONE_KEY_FINISH_BUTTON) or self.appear(self.I_HARVEST_ONE_KEY_DAILY):
+                break
+            if self.appear_then_click(self.I_HARVEST_ONE_KEY, interval=1):
+                continue
         
-        self.wait_until_appear(self.I_HARVEST_ONE_KEY_FINISH_BUTTON, wait_time=3)
+        logger.info('One key harvest page opened')
         
-        if self.appear_then_click(self.I_HARVEST_ONE_KEY_DAILY, interval=1):
-            logger.info('Click one key harvest daily')
-            self.wait_until_appear(self.I_HARVEST_ONE_KEY_FINISH_BUTTON, wait_time=2)
-        
-        self.appear_then_click(self.I_HARVEST_ONE_KEY_FINISH_BUTTON, interval=1)
-        logger.info('Click one key harvest finish button')
+        while 1:
+            self.screenshot()
+            if self.appear(self.I_HARVEST_ONE_KEY_FINISH_BUTTON):
+                self.appear_then_click(self.I_HARVEST_ONE_KEY_FINISH_BUTTON, interval=1)
+                logger.info('Click one key harvest finish button')
+                break
+            if self.appear_then_click(self.I_HARVEST_ONE_KEY_DAILY, interval=1):
+                logger.info('Click one key harvest daily')
+                continue
         
         start_time = time.time()
-        while time.time() - start_time < 5:
+        while time.time() - start_time < 10:
             self.screenshot()
-            if self.appear_then_click(self.I_LOGIN_RED_CLOSE, interval=1):
-                logger.info('Close red close after one key harvest')
-                start_time = time.time()
-                continue
-            
-            if self.appear_then_click(self.I_HARVEST_ONE_KEY_WANHUA_CARD_SKIP, interval=1):
-                logger.info('Click wanhua card skip button')
-                start_time = time.time()
-                continue
-            
             if self.appear_then_click(self.I_HARVEST_ONE_KEY_CANCEL, interval=1):
                 logger.info('Click one key harvest cancel button')
-                start_time = time.time()
+                continue
+            if self.appear_then_click(self.I_LOGIN_RED_CLOSE, interval=1):
+                logger.info('Close red close after one key harvest')
+                continue
+            if self.appear_then_click(self.I_HARVEST_ONE_KEY_WANHUA_CARD_SKIP, interval=1):
+                logger.info('Click wanhua card skip button')
                 continue
         
         if self.appear(self.I_HARVEST_ONE_KEY_SUCCESS):
-            self.click(self.C_HARVEST_ONE_KEY_CLOSE_AREA, interval=1)
-            logger.info('Click one key success close area')
+            logger.info('One key harvest success page appeared')
+            while 1:
+                self.screenshot()
+                if not self.appear(self.I_HARVEST_ONE_KEY_SUCCESS):
+                    break
+                if self.appear_then_click(self.I_LOGIN_YELLOW_CLOSE, interval=1):
+                    logger.info('Click yellow close after one key harvest')
+                    continue
+                self.click(self.C_HARVEST_ONE_KEY_CLOSE_AREA, interval=1)
+                logger.info('Click one key success close area')
         
-        self.screenshot()
-        if self.appear_then_click(self.I_LOGIN_YELLOW_CLOSE, interval=1):
-            logger.info('Close yellow close after one key harvest')
+        self.ui_click_until_disappear(self.I_LOGIN_YELLOW_CLOSE)
         
         return True
 

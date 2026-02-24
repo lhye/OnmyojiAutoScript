@@ -58,7 +58,7 @@ class RestartAssets:
 	# 万华牌跳过按钮 
 	I_HARVEST_ONE_KEY_WANHUA_CARD_SKIP = RuleImage(roi_front=(1120,0,43,18), roi_back=(1120,0,160,80), threshold=0.8, method="Template matching", file="./tasks/Restart/harvest/harvest_harvest_one_key_wanhua_card_skip.png")
 	# 一键收获取消按钮 
-	I_HARVEST_ONE_KEY_CANCEL = RuleImage(roi_front=(430,230,420,270), roi_back=(430,230,420,270), threshold=0.8, method="Template matching", file="./tasks/Restart/harvest/harvest_harvest_one_key_cancel.png")
+	I_HARVEST_ONE_KEY_CANCEL = RuleImage(roi_front=(430,230,135,66), roi_back=(430,230,420,270), threshold=0.8, method="Template matching", file="./tasks/Restart/harvest/harvest_harvest_one_key_cancel.png")
 	# 一键收获成功标识 
 	I_HARVEST_ONE_KEY_SUCCESS = RuleImage(roi_front=(280,16,161,35), roi_back=(280,16,230,70), threshold=0.8, method="Template matching", file="./tasks/Restart/harvest/harvest_harvest_one_key_success.png")
 
@@ -69,7 +69,7 @@ class RestartAssets:
 	# 卷轴关闭区域点击(用户新增，用于点击I_LOGIN_SCROOLL_CLOSE的区域而不依赖图片识别) 
 	C_LOGIN_SCROLL_CLOSE_AREA = RuleClick(roi_front=(1181,634,28,39), roi_back=(1162,595,77,112), name="login_scroll_close_area")
 	# 一键收获完成界面关闭区域 
-	C_HARVEST_ONE_KEY_CLOSE_AREA = RuleClick(roi_front=(0,0,230,280), roi_back=(0,0,230,280), name="harvest_one_key_close_area")
+	C_HARVEST_ONE_KEY_CLOSE_AREA = RuleClick(roi_front=(1230,340,50,50), roi_back=(1230,340,50,50), name="harvest_one_key_close_area")
 
 
 	# Image Rule Assets

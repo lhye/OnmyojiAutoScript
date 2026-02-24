@@ -207,6 +207,15 @@
     "description": "万华牌跳过按钮"
   },
   {
+    "itemName": "harvest_one_key_cancel",
+    "imageName": "harvest_harvest_one_key_cancel.png",
+    "roiFront": "430,230,135,66",
+    "roiBack": "430,230,420,270",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "一键收获取消按钮"
+  },
+  {
     "itemName": "harvest_one_key_success",
     "imageName": "harvest_harvest_one_key_success.png",
     "roiFront": "280,16,161,35",
