@@ -378,10 +378,17 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         if self.appear_then_click(self.I_WIN, interval=0.8):
             self.click(self._reward_exclude_click_1)
             return HookSignal.CONTINUE
-        if self._ocr_battle_win():
-            # 通用战斗主题: 胜利banner模板失配, 盲点banner区域推进结算
-            self.click(self.C_WIN_1, interval=0.8)
-            return HookSignal.CONTINUE
+        if self._universal_battle:
+            # 通用战斗主题: 鬼火消失=战斗结束, 以领奖画面(公共资产)/准备界面判定胜负, 不使用OCR
+            if not self.appear(self.I_BATTLE_EMBER):
+                result = self._universal_wait_result()
+                if result is None:
+                    return HookSignal.CONTINUE
+                if result is False:
+                    logger.warning('False battle (universal)')
+                    bw_ctx.completion = True
+                    return HookSignal.CONTINUE
+                # 胜利: 领奖画面已出现, 落到下方领奖逻辑
         appear_ghost, appear_reward, appear_gold, appear_skin = (
             self.appear(self.I_GREED_GHOST),
             self.appear(self.I_REWARD),
@@ -425,15 +432,15 @@ class BattleWait(BaseTask, GeneralBattleAssets):
 
 
     def _bw_failure_default(self, bw_ctx: BattleWaitContext) -> HookSignal:
+        if self._universal_battle:
+            # 通用战斗主题: 失败已由 success hook 的鬼火判定处理(不使用OCR), 这里仅兜底快速判定
+            if not self.appear(self.I_BATTLE_EMBER) and self.is_in_prepare(is_screenshot=False):
+                logger.warning('False battle (universal)')
+                bw_ctx.completion = True
+            return HookSignal.CONTINUE
         if self.appear(self.I_FALSE, threshold=0.8):
             logger.warning('False battle')
             self.ui_click_until_disappear(self.I_FALSE)
-            bw_ctx.completion = True
-            return HookSignal.CONTINUE
-        if self._ocr_battle_false():
-            # 通用战斗主题: 失败banner模板失配, 盲点banner区域推进结算
-            logger.warning('False battle (ocr)')
-            self.click(self.C_WIN_1, interval=0.8)
             bw_ctx.completion = True
             return HookSignal.CONTINUE
         return HookSignal.CONTINUE

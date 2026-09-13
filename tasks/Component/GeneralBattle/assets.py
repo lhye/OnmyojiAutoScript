@@ -163,10 +163,6 @@ class GeneralBattleAssets:
 	O_PRESET_FULL = RuleOcr(roi=(20,620,60,80), area=(20,620,60,80), mode="Single", method="Default", keyword="预设", name="preset_full")
 	# 已标记
 	O_BOSS_MARK = RuleOcr(roi=(379,44,50,21), area=(379,44,50,21), mode="Single", method="Default", keyword="已标记", name="boss_mark")
-	# 通用战斗主题: 结算画面胜利文字(取各主题I_WIN/I_FALSE roi_back并集外扩: x240-1100, y25-335; 该区域实测艺术字得分最高)
-	O_BATTLE_WIN = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="胜利", name="battle_win_ocr")
-	# 通用战斗主题: 结算画面失败文字
-	O_BATTLE_FALSE = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="失败", name="battle_false_ocr")
 
 
 	# Swipe Rule Assets

@@ -341,6 +341,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         # 等待准备按钮的出现
         self.wait_until_appear(self.I_PREPARE_HIGHLIGHT)
 
+        banner_clicks = 0  # 通用战斗主题: 结算横幅盲点计数
         while count >= 0:
             self.screenshot()
 
@@ -366,6 +367,19 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             # 如果出现失败 就点击，返回False。 TODO 不知道挑战馆主失败是不是同一个画面？
             if self.appear(GeneralBattle.I_FALSE):
                 logger.info("Battle failed")
+                win = False
+                break
+
+            # 通用战斗主题: 战斗结束(鬼火消失)后, 胜/败横幅需点击才消失, 盲点推进(次数上限)
+            if self._universal_battle and not self._universal_battle_running() and banner_clicks < 3:
+                banner_clicks += 1
+                self._universal_click_banner(count=1, delay=1)
+                continue
+
+            # 通用战斗主题: 鬼火消失+已回寮境顶部"道馆突破"=战斗失败(不使用OCR)
+            if self._universal_battle and not self._universal_battle_running() and \
+                    self.appear(self.I_RYOU_DOKAN_CENTER_TOP):
+                logger.info("Battle failed (universal)")
                 win = False
                 break
 
@@ -1029,6 +1043,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         # 绿标区域初始化标识，只初始化一次绿标区域
         need_init_green_mark_area = battle_config.green_enable
 
+        banner_clicks = 0  # 通用战斗主题: 结算横幅盲点计数
         while True:
             if cfg.general_battle_config.green_enable:
                 self.green_mark_screenshot(anti_wait_long_time)
@@ -1036,6 +1051,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 self.screenshot()
 
             def is_battle_end() -> (bool, bool):
+                nonlocal banner_clicks
 
                 if battle_count_limit < 0:
                     logger.info(f"battle_count_limit:{battle_count_limit}")
@@ -1059,6 +1075,18 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                     logger.info("Battle failed")
                     win = False
                     return win, True
+
+                # 通用战斗主题: 战斗结束(鬼火消失)后, 胜/败横幅需点击才消失, 盲点推进(次数上限)
+                if self._universal_battle and not self._universal_battle_running():
+                    if banner_clicks < 3:
+                        banner_clicks += 1
+                        self._universal_click_banner(count=1, delay=1)
+                        return False, False
+                    # 鬼火消失+已回寮境顶部"道馆突破"=战斗失败(不使用OCR)
+                    if self.appear(self.I_RYOU_DOKAN_CENTER_TOP):
+                        logger.info("Battle failed (universal)")
+                        win = False
+                        return win, True
 
                 # 如果领奖励
                 if self.appear(self.I_RYOU_DOKAN_BATTLE_OVER, threshold=0.6):

@@ -30,6 +30,7 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
     pre_battle_lose_cnt = battle_lose_count
     is_celeb: bool = False  # 是否是名仕
     conf: Duel = None
+    _result_ocr_timer = None  # 结算banner胜负OCR的节流计时器(universal_judge_result用)
 
     def run(self):
         current_time = datetime.now().time()
@@ -176,12 +177,26 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
             if ret_timer.started() and ret_timer.reached():  # 兜底逻辑, 已经结算了但是还没有到斗技主界面
                 self.ui_goto_page(page_duel)
                 break
-            if self.is_battle_win():
+            if self._universal_battle and ret is None and not self._universal_battle_running():
+                # 通用主题: 鬼火消失=战斗结束。结算banner需点击才消失, 点击后可能经过领奖画面(胜利也可能没有), 最终回斗技主界面
+                result = self.universal_judge_result()
+                if result is not None:
+                    ret = result
+                    ret_timer.start()
+                    logger.info(f'Duel battle result: {"win" if ret else "lose"} (universal)')
+                else:
+                    # 胜负未识别(如特殊banner样式): 盲点banner推进, 点出领奖画面时下轮判胜
+                    self._universal_click_banner(count=1, delay=0.5)
+            if self._universal_battle and ret is not None:
+                # 已判定胜负: 盲点推进结算画面(按name全局节流1.5s, 低频), 回到斗技主界面后由上方条件break
+                self.click(random_click(ltrb=(True, True, False, True)), interval=1.5)
+                continue
+            if ret is None and self.is_battle_win():
                 ret = True
                 ret_timer.start()
                 self.click(random_click(ltrb=(True, True, False, True)), interval=1.2)
                 continue
-            if self.is_battle_lose():
+            if ret is None and self.is_battle_lose():
                 ret = False
                 ret_timer.start()
                 self.click(random_click(ltrb=(True, True, False, True)), interval=1.2)
@@ -203,8 +218,30 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
         return ret
 
     def duel_exit_battle(self):
+        was_in_battle = False
+        banner_clicks = 0
         while 1:
             self.screenshot()
+            if self._universal_battle:
+                # 通用战斗主题: 撤退确认弹窗(公共资产)+按位置点退出; 战斗结束后失败横幅需点击才消失
+                if self.appear_then_click(self.I_EXIT_ENSURE, interval=1.2):
+                    was_in_battle = True
+                    continue
+                if self._click_exit():
+                    was_in_battle = True
+                    continue
+                if was_in_battle:
+                    # 鬼火消失=战斗已结束, 盲点失败横幅后返回
+                    if not self._universal_battle_running() and banner_clicks < 3:
+                        banner_clicks += 1
+                        self._universal_click_banner(count=1, delay=1)
+                    return
+                # 未进入战斗(名士ban选等): 斗技专属退出按钮
+                if self.appear_then_click(self.I_DUEL_EXIT, interval=1):
+                    continue
+                if self.appear(self.I_D_CHECK_BAN):
+                    continue
+                return
             if self.appear(self.I_D_FAIL) or self.appear(self.I_FALSE):
                 return
             if self.appear_then_click(self.I_EXIT_ENSURE):
@@ -305,10 +342,38 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
             self.appear(self.I_D_CHECK_BAN)
 
     def is_battle_win(self) -> bool:
+        if self._universal_battle:
+            # 通用战斗主题: 领奖画面(公共资产)出现必为胜利; 注意胜利也可能没有领奖画面(由universal_judge_result兜底)
+            return self.appear(self.I_REWARD, threshold=0.6) or self.appear(self.I_REWARD_GOLD, threshold=0.8)
         return self.appear(self.I_WIN) or self.appear(self.I_D_VICTORY)
 
     def is_battle_lose(self) -> bool:
+        if self._universal_battle:
+            # 通用战斗主题: 下一局的准备房间里鬼火必然不可见, "鬼火消失+准备界面"不能作为失败依据
+            # (会让battle_prepare误判战斗已结束而不点准备); 失败由结算banner的OCR在wait_battle内判定
+            return False
         return self.appear(self.I_FALSE) or self.appear(self.I_D_FAIL)
+
+    def universal_judge_result(self):
+        """通用战斗主题的斗技结算判定(鬼火消失后调用):
+        结算流程: 鬼火消失 -> 胜/败banner(需点击才消失) -> 可能经过领奖画面(胜利也可能没有) -> 回到斗技主界面
+        - 领奖画面出现 -> 胜利
+        - 领奖未出现时OCR识别banner上的"胜利/失败"文字(1秒节流, 仅结算阶段识别, 非逐帧)
+        :return: True=胜, False=败, None=未识别
+        """
+        if self.appear(self.I_REWARD, threshold=0.6) or self.appear(self.I_REWARD_GOLD, threshold=0.8):
+            return True
+        if self._result_ocr_timer is None:
+            self._result_ocr_timer = Timer(1).start()
+        elif not self._result_ocr_timer.reached():
+            return None
+        else:
+            self._result_ocr_timer = Timer(1).start()
+        if self.ocr_appear(self.O_D_RESULT_WIN):
+            return True
+        if self.ocr_appear(self.O_D_RESULT_LOSE):
+            return False
+        return None
 
     def is_battle_end(self) -> bool:
         return self.is_battle_win() or self.is_battle_lose() or \

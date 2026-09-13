@@ -73,7 +73,11 @@ class DuelAssets:
 	O_D_HAND = RuleOcr(roi=(31,639,63,45), area=(31,639,63,45), mode="Single", method="Default", keyword="手动", name="d_hand")
 	# 自动 
 	O_D_AUTO = RuleOcr(roi=(30,640,65,44), area=(30,640,65,44), mode="Single", method="Default", keyword="自动", name="d_auto")
-	# 被办式神名称 
+	# 被办式神名称
 	O_D_BAN_NAME = RuleOcr(roi=(92,97,82,25), area=(92,97,82,25), mode="Single", method="Default", keyword="", name="d_ban_name")
+	# 通用战斗主题: 结算banner胜利文字(区域取各主题文字最大集, 中上部)
+	O_D_RESULT_WIN = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="胜利", name="d_result_win")
+	# 通用战斗主题: 结算banner失败文字
+	O_D_RESULT_LOSE = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="失败", name="d_result_lose")
 
 

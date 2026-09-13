@@ -543,10 +543,15 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
             logger.info("Combat time ended, proceeding to exit.")
             self.device.stuck_record_clear()
         # 战斗提前结束这时没有返回按钮
+        if self._universal_battle and not self._universal_battle_running():
+            # 通用战斗主题: 鬼火消失=战斗已结束, 胜利横幅需点击才消失(不使用OCR)
+            self._universal_click_banner()
+            return True
         if self.appear_then_click(self.I_WIN, interval=1.5):
             return True
 
         # 点击返回
+        banner_clicks = 0
         while 1:
             self.screenshot()
             if self.appear_then_click(self.I_EXIT_ENSURE, interval=2):
@@ -555,13 +560,13 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
                 continue
             if self.appear_then_click(self.I_WIN, interval=2):
                 continue
-            if self._ocr_battle_win():
-                # 通用战斗主题: 胜利banner模板失配, 盲点banner区域推进结算
-                self.click(self.C_WIN_1, interval=2)
+            if self.appear_then_click(self.I_REWARD, interval=2):
+                # 胜利后的领奖画面(公共资产, 全主题一致): 点击继续
                 continue
-            if self._ocr_battle_false():
-                # 通用战斗主题: 失败banner(含撤退判定)模板失配, 盲点banner区域推进
-                self.click(random.choice([self.C_WIN_1, self.C_WIN_2]), interval=2)
+            if self._universal_battle and banner_clicks < 3:
+                # 通用战斗主题: 撤退产生的失败横幅需点击才消失, 盲点推进(次数上限防误点地图)
+                banner_clicks += 1
+                self._universal_click_banner(count=1, delay=1)
                 continue
             if self.appear(self.I_ABYSS_NAVIGATION):
                 break
