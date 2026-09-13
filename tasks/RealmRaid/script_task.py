@@ -491,14 +491,14 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RealmRaidAssets):
             if self.appear(self.I_FRESH_ENSURE):
                 logger.info("Refresh popup detected! Clicking CANCEL (Red Button).")
                 # 点击“取消”按钮的坐标 (基于1280x720分辨率)
-                self.device.click(x=530, y=460) 
+                self.device.click(x=530, y=460)
                 time.sleep(1.5)
                 self.screenshot()
                 continue
 
             # 点击屏幕正上方 (640, 50)，而不是右下角，避免误触"刷新"按钮
             logger.info("Clicking safe area to clear rewards...")
-            self.device.click(x=640, y=50)  
+            self.device.click(x=640, y=50)
             time.sleep(1.5)
             self.screenshot()
             retry_clean += 1

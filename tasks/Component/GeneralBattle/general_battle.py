@@ -122,76 +122,43 @@ class GeneralBattle(BattleWait, GeneralBuff):
         :param config:
         :return:
         """
-        # 退四: 不点准备进战斗, 在准备界面直接点左上角返回退出
-        if exit_four:
-            # 等待准备界面加载完成(最多5秒), 防止转场期间按位置点击落空
+        # 退四: 不点准备进战斗, 在准备界面点左上角返回退出
+        # 注意: 准备界面入场动画约2秒, 期间左上角返回箭头尚未渲染, 点击会落空(报错截图+ADB实测证实);
+        # 因此以退出确认框出现为点击成功标志, 未出现则等待动画结束后重试(最多3次)
+        ensure_ok = False
+        for _ in range(3):
             prep_timer = Timer(5).start()
             while not prep_timer.reached():
                 self.screenshot()
                 if self.is_in_prepare(False):
                     break
+            sleep(1.5)  # 等待入场动画结束, 确保返回箭头已渲染
             if self._universal_battle:
-                # 通用战斗主题: I_EXIT模板不可用; 准备界面左上角返回箭头与战斗内退出按钮位置一致, 按位置点击
                 self.click(self.C_BATTLE_EXIT_POSITION, interval=1)
             else:
-                # 普通主题: I_EXIT模板恰好匹配准备界面返回箭头
                 self.appear_then_click(self.I_EXIT, interval=1)
-            # 可能弹出退出确认框(公共资产), 短暂等待并点击
-            ensure_timer = Timer(5).start()
+            ensure_timer = Timer(3).start()
             while not ensure_timer.reached():
                 self.screenshot()
-                if self.appear_then_click(self.I_EXIT_ENSURE, interval=1.5):
+                if self.appear(self.I_EXIT_ENSURE):
+                    ensure_ok = True
                     break
-            return True
-
-        # 如果没有锁定队伍那么在点击准备后才退出的,退四的话就直接退出
-        if not config.lock_team_enable:
-            # 点击准备按钮
-            self.wait_until_appear(self.I_PREPARE_HIGHLIGHT)
-            while 1:
-                self.screenshot()
-                if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1.5):
-                    continue
-                if not (self.appear(self.I_PRESET) or self.appear(self.I_PRESET_WIT_NUMBER)):
-                    break
-            logger.info(f"Click {self.I_PREPARE_HIGHLIGHT.name}")
-
-        # 点击返回
-        while 1:
-            self.screenshot()
-            if self.appear(self.I_EXIT_ENSURE):
+            if ensure_ok:
                 break
-            if self._click_exit():
-                continue
-            # 等待战斗开始: 非通用主题等 I_EXIT 模板可见, 通用主题等鬼火出现后按位置点击
-        logger.info(f"Click {self.I_EXIT.name}")
-
-        # 点击返回确认
-        while 1:
+        if not ensure_ok:
+            logger.warning('Exit four failed after 3 retries, still in prepare or confirm not shown')
+        # 点确认退出(弃战=记一次失败)
+        ensure_timer = Timer(5).start()
+        while not ensure_timer.reached():
             self.screenshot()
             if self.appear_then_click(self.I_EXIT_ENSURE, interval=1.5):
-                continue
-            if self._universal_battle:
-                # 通用战斗主题: 撤退后失败横幅需点击才消失, 盲点推进(不使用OCR)
-                if self.appear(self.I_EXIT_ENSURE):
-                    continue
-                self._universal_click_banner(delay=1)
                 break
-            if self.appear(self.I_FALSE):
+        # 确认后进入"失败"结算画面(点击任意处回到突破列表, 由fire()清理循环点掉), 此处只需等待离开准备界面
+        leave_timer = Timer(8).start()
+        while not leave_timer.reached():
+            self.screenshot()
+            if not self.is_in_prepare(False):
                 break
-        logger.info(f"Click {self.I_EXIT_ENSURE.name}")
-
-        # 点击失败确认
-        if not self._universal_battle:
-            self.wait_until_appear(self.I_FALSE)
-            while 1:
-                self.screenshot()
-                if self.appear_then_click(self.I_FALSE, interval=1.5):
-                    continue
-                if not self.appear(self.I_FALSE):
-                    break
-            logger.info(f"Click {self.I_FALSE.name}")
-
         return True
 
     def exit_battle(self, skip_first: bool = False) -> bool:
