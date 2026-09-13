@@ -25,6 +25,13 @@ class GeneralBattle(BattleWait, GeneralBuff):
     使用这个通用的战斗必须要求这个任务的config有config_general_battle
     """
 
+    # 通用战斗主题开关, 由 CostumeBase.check_costume_battle 置 True
+    _universal_battle: bool = False
+
+    # 结算"胜利/失败"为艺术字, OCR得分偏低(实测0.52-0.84), 放宽阈值防止漏检
+    GeneralBattleAssets.O_BATTLE_WIN.score = 0.5
+    GeneralBattleAssets.O_BATTLE_FALSE.score = 0.5
+
     def run_general_battle(self, config: GeneralBattleConfig = None, buff: BuffClass or list[BuffClass] = None) -> bool:
         """
         运行脚本
@@ -134,10 +141,11 @@ class GeneralBattle(BattleWait, GeneralBuff):
         # 点击返回
         while 1:
             self.screenshot()
-            if self.appear_then_click(self.I_EXIT, interval=1.5):
-                continue
             if self.appear(self.I_EXIT_ENSURE):
                 break
+            if self._click_exit():
+                continue
+            # 等待战斗开始: 非通用主题等 I_EXIT 模板可见, 通用主题等鬼火出现后按位置点击
         logger.info(f"Click {self.I_EXIT.name}")
 
         # 点击返回确认
@@ -145,15 +153,20 @@ class GeneralBattle(BattleWait, GeneralBuff):
             self.screenshot()
             if self.appear_then_click(self.I_EXIT_ENSURE, interval=1.5):
                 continue
-            if self.appear(self.I_FALSE):
+            if self.appear(self.I_FALSE) or self._ocr_battle_false():
                 break
         logger.info(f"Click {self.I_EXIT_ENSURE.name}")
 
         # 点击失败确认
-        self.wait_until_appear(self.I_FALSE)
+        if not self._universal_battle:
+            self.wait_until_appear(self.I_FALSE)
         while 1:
             self.screenshot()
             if self.appear_then_click(self.I_FALSE, interval=1.5):
+                continue
+            if self._ocr_battle_false():
+                # 通用战斗主题: 失败banner模板失配, 盲点banner区域推进
+                self.click(random.choice([self.C_WIN_1, self.C_WIN_2]), interval=1.5)
                 continue
             if not self.appear(self.I_FALSE):
                 break
@@ -169,22 +182,35 @@ class GeneralBattle(BattleWait, GeneralBuff):
         if skip_first:
             self.screenshot()
 
-        if not self.appear(self.I_EXIT):
+        # 通用战斗主题下退出按钮外观未知, 以鬼火条可见为战斗中前提, 按位置点击
+        if self._universal_battle:
+            if not self.appear(self.I_BATTLE_EMBER):
+                return False
+        elif not self.appear(self.I_EXIT):
             return False
 
         # 点击返回
         logger.info(f"Click {self.I_EXIT.name}")
         while 1:
             self.screenshot()
-            if self.appear_then_click(self.I_EXIT, interval=1.5):
-                continue
             if self.appear(self.I_EXIT_ENSURE):
                 break
+            if self._click_exit():
+                continue
+            # 等待战斗开始: 非通用主题等 I_EXIT 模板可见, 通用主题等鬼火出现后按位置点击
 
         # 点击返回确认
         while 1:
             self.screenshot()
             if self.appear_then_click(self.I_EXIT_ENSURE, interval=1.5):
+                continue
+            if self._universal_battle:
+                # 通用战斗主题: 确认弹窗为公共资产, 以确认弹窗消失为准; 撤退后的失败banner也需点掉
+                if self._ocr_battle_false():
+                    self.click(random.choice([self.C_WIN_1, self.C_WIN_2]), interval=1.5)
+                    continue
+                if not self.appear(self.I_EXIT_ENSURE):
+                    break
                 continue
             if self.appear_then_click(self.I_FALSE, interval=1.5):
                 continue
@@ -210,7 +236,7 @@ class GeneralBattle(BattleWait, GeneralBuff):
         while 1:
             self.screenshot()
             # 如果出现赢 就点击, 第二个是针对封魔的图片
-            if self.appear(self.I_WIN, threshold=0.8) or self.appear(self.I_DE_WIN):
+            if self.appear(self.I_WIN, threshold=0.8) or self.appear(self.I_DE_WIN) or self._ocr_battle_win():
                 logger.info("Battle result is win")
                 if self.appear(self.I_DE_WIN):
                     self.ui_click_until_disappear(self.I_DE_WIN)
@@ -218,7 +244,7 @@ class GeneralBattle(BattleWait, GeneralBuff):
                 break
 
             # 如果出现失败 就点击，返回False
-            if self.appear(self.I_FALSE, threshold=0.8):
+            if self.appear(self.I_FALSE, threshold=0.8) or self._ocr_battle_false():
                 logger.info("Battle result is false")
                 win = False
                 break
@@ -245,11 +271,19 @@ class GeneralBattle(BattleWait, GeneralBuff):
                 action_click = random.choice([self.C_WIN_1, self.C_WIN_2, self.C_WIN_3])
                 if self.appear_then_click(self.I_WIN, action=action_click, interval=0.5):
                     continue
+                if self._ocr_battle_win():
+                    # 通用战斗主题: 胜利banner模板失配, 盲点banner区域推进结算
+                    self.click(action_click, interval=0.5)
+                    continue
                 if not self.appear(self.I_WIN):
                     break
             else:
                 # 如果失败且 点击失败后
                 if self.appear_then_click(self.I_FALSE, threshold=0.6):
+                    continue
+                if self._ocr_battle_false():
+                    # 通用战斗主题: 失败banner模板失配, 盲点banner区域推进结算
+                    self.click(random.choice([self.C_WIN_1, self.C_WIN_2]), interval=0.5)
                     continue
                 if not self.appear(self.I_FALSE, threshold=0.6):
                     return False
@@ -305,6 +339,10 @@ class GeneralBattle(BattleWait, GeneralBuff):
             # 出现赢的鼓，点击直到消失
             if self.appear_then_click(self.I_WIN, interval=0.8):
                 continue
+            if self._ocr_battle_win():
+                # 通用战斗主题: 胜利banner模板失配, 盲点banner区域推进结算
+                self.click(random.choice([self.C_WIN_1, self.C_WIN_2, self.C_WIN_3]), interval=0.8)
+                continue
             # 逢魔胜利图
             if self.appear(self.I_DE_WIN):
                 self.ui_click_until_disappear(self.I_DE_WIN)
@@ -312,6 +350,10 @@ class GeneralBattle(BattleWait, GeneralBuff):
             if self.appear(self.I_FALSE, threshold=0.8):
                 logger.warning('False battle')
                 self.ui_click_until_disappear(self.I_FALSE)
+                return False
+            if self._ocr_battle_false():
+                logger.warning('False battle (ocr)')
+                self.click(random.choice([self.C_WIN_1, self.C_WIN_2]), interval=0.8)
                 return False
             appear_ghost, appear_reward, appear_gold = (
                 self.appear(self.I_GREED_GHOST),
@@ -522,7 +564,8 @@ class GeneralBattle(BattleWait, GeneralBuff):
     def is_in_battle(self, is_screenshot: bool = True) -> bool:
         """
         判断是否在战斗中
-        tip: 因为有friends判别, 所以即使在准备界面也会识别在战斗中
+        tip: 非通用主题因为有friends判别, 所以即使在准备界面也会识别在战斗中;
+             通用战斗主题下各模板失配时以鬼火计数"/8"为准(仅真实战斗中可见)
         :return:
         """
         if is_screenshot:
@@ -533,8 +576,10 @@ class GeneralBattle(BattleWait, GeneralBuff):
                 self.appear(self.I_FALSE) or \
                 self.appear(self.I_REWARD):
             return True
-        else:
-            return False
+        if self._universal_battle:
+            # 通用战斗主题: 模板失配时用鬼火计数"/8"兜底
+            return self.appear(self.I_BATTLE_EMBER)
+        return False
 
     def is_in_real_battle(self, is_screenshot: bool = True):
         """
@@ -544,7 +589,37 @@ class GeneralBattle(BattleWait, GeneralBuff):
         """
         if is_screenshot:
             self.screenshot()
-        return self.appear(self.I_BATTLE_INFO)
+        if self.appear(self.I_BATTLE_INFO):
+            return True
+        if self._universal_battle:
+            # 通用战斗主题: 模板失配时用鬼火计数"/8"兜底
+            return self.appear(self.I_BATTLE_EMBER)
+        return False
+
+    def _ocr_battle_win(self) -> bool:
+        """通用战斗主题: 结算画面"胜利"文字OCR兜底
+        鬼火计数可见=仍在战斗中, 结算banner不可能出现: 跳过OCR(省开销且防战斗中误判)"""
+        if not self._universal_battle:
+            return False
+        if self.appear(self.I_BATTLE_EMBER):
+            return False
+        return bool(self.ocr_appear(self.O_BATTLE_WIN, interval=1))
+
+    def _ocr_battle_false(self) -> bool:
+        """通用战斗主题: 结算画面"失败"文字OCR兜底, 鬼火闸门同上"""
+        if not self._universal_battle:
+            return False
+        if self.appear(self.I_BATTLE_EMBER):
+            return False
+        return bool(self.ocr_appear(self.O_BATTLE_FALSE, interval=1))
+
+    def _click_exit(self) -> bool:
+        """点击战斗左上角退出按钮: 模板优先; 通用战斗主题按固定位置点击(各主题按钮位置一致, 以鬼火条可见为战斗中前提)"""
+        if self._universal_battle:
+            if not self.appear(self.I_BATTLE_EMBER):
+                return False
+            return self.click(self.C_BATTLE_EXIT_POSITION, interval=1.5)
+        return self.appear_then_click(self.I_EXIT, interval=1.5)
 
     def is_in_prepare(self, is_screenshot: bool = True) -> bool:
         """

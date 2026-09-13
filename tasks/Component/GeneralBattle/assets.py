@@ -15,8 +15,10 @@ class GeneralBattleAssets:
 	C_WIN_1 = RuleClick(roi_front=(175,102,1054,99), roi_back=(175,102,1054,99), name="win_1")
 	# description 
 	C_WIN_2 = RuleClick(roi_front=(22,112,210,496), roi_back=(22,112,210,496), name="win_2")
-	# description 
+	# description
 	C_WIN_3 = RuleClick(roi_front=(1059,114,206,468), roi_back=(1059,114,206,468), name="win_3")
+	# 通用战斗主题: 战斗左上角退出按钮按位置点击(各主题按钮中心均落在x27-38,y27-36, 该区域在所有主题按钮矩形内)
+	C_BATTLE_EXIT_POSITION = RuleClick(roi_front=(26,24,12,12), roi_back=(26,24,12,12), name="battle_exit_position")
 	# description 
 	C_REWARD_1 = RuleClick(roi_front=(606,603,325,87), roi_back=(606,603,325,87), name="reward_1")
 	# description 
@@ -133,8 +135,12 @@ class GeneralBattleAssets:
 	I_GREEN_MARKER_BOTTOM = RuleImage(roi_front=(0,0,1280,720), roi_back=(0,0,1280,720), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_green_marker_bottom.png")
 	# 新版本的预设图案带数字 
 	I_PRESET_WIT_NUMBER = RuleImage(roi_front=(40,655,37,37), roi_back=(9,636,100,74), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_preset_wit_number.png")
-	# 战斗信息标识 
+	# 战斗信息标识
 	I_BATTLE_INFO = RuleImage(roi_front=(230,12,37,39), roi_back=(210,1,147,72), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_battle_info.png")
+	# 通用战斗主题: 鬼火计数"/8"紧凑模板(30x29, 完整字形), 用于判定处于真实战斗中
+	# 搜索带: 横向需很宽(计数器随出战式神数量漂移, 实测5人队x259, 3人队x457); 垂直位置固定(y683-711), 高度仅留2-3px余量
+	# 紧凑模板跨场景得分更高(0.95-1.0), 全量截图扫描误报max 0.407, 阈值0.7余量充足
+	I_BATTLE_EMBER = RuleImage(roi_front=(259,683,30,29), roi_back=(120,681,660,34), threshold=0.7, method="Template matching", file="./tasks/Component/GeneralBattle/battle_universal/battle_uni_ember.png")
 
 
 	# Image Rule Assets
@@ -155,8 +161,12 @@ class GeneralBattleAssets:
 	O_PRESET = RuleOcr(roi=(20,620,60,80), area=(20,620,60,80), mode="Single", method="Default", keyword="预", name="preset")
 	# 预设 
 	O_PRESET_FULL = RuleOcr(roi=(20,620,60,80), area=(20,620,60,80), mode="Single", method="Default", keyword="预设", name="preset_full")
-	# 已标记 
+	# 已标记
 	O_BOSS_MARK = RuleOcr(roi=(379,44,50,21), area=(379,44,50,21), mode="Single", method="Default", keyword="已标记", name="boss_mark")
+	# 通用战斗主题: 结算画面胜利文字(取各主题I_WIN/I_FALSE roi_back并集外扩: x240-1100, y25-335; 该区域实测艺术字得分最高)
+	O_BATTLE_WIN = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="胜利", name="battle_win_ocr")
+	# 通用战斗主题: 结算画面失败文字
+	O_BATTLE_FALSE = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="失败", name="battle_false_ocr")
 
 
 	# Swipe Rule Assets

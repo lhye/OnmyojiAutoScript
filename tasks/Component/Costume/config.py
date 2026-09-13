@@ -77,6 +77,7 @@ class BattleType(str, Enum):
     COSTUME_BATTLE_13 = 'costume_battle_13'  # 登云问翠
     COSTUME_BATTLE_14 = 'costume_battle_14'  # 茸茨跃动
     COSTUME_BATTLE_15 = 'costume_battle_15'  # 灵狐寄愿
+    COSTUME_BATTLE_UNIVERSAL = 'costume_battle_universal'  # 通用战斗主题
 
 
 class CostumeConfig(BaseModel):

@@ -121,6 +121,11 @@ class CostumeBase:
     def check_costume_battle(self, battle_type: BattleType):
         if battle_type == BattleType.COSTUME_BATTLE_DEFAULT:
             return
+        if battle_type == BattleType.COSTUME_BATTLE_UNIVERSAL:
+            # 通用战斗主题: 不替换任何模板图, 战斗判定走鬼火计数模板 + 胜利/失败OCR兜底
+            logger.info('Switch battle theme to universal (OCR fallback)')
+            self._universal_battle = True
+            return
         logger.info(f'Switch battle theme {battle_type}')
         costume_battle_assets = CostumeBattleAssets()
         for key, value in battle_theme_model[battle_type].items():

@@ -378,6 +378,10 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         if self.appear_then_click(self.I_WIN, interval=0.8):
             self.click(self._reward_exclude_click_1)
             return HookSignal.CONTINUE
+        if self._ocr_battle_win():
+            # 通用战斗主题: 胜利banner模板失配, 盲点banner区域推进结算
+            self.click(self.C_WIN_1, interval=0.8)
+            return HookSignal.CONTINUE
         appear_ghost, appear_reward, appear_gold, appear_skin = (
             self.appear(self.I_GREED_GHOST),
             self.appear(self.I_REWARD),
@@ -424,6 +428,12 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         if self.appear(self.I_FALSE, threshold=0.8):
             logger.warning('False battle')
             self.ui_click_until_disappear(self.I_FALSE)
+            bw_ctx.completion = True
+            return HookSignal.CONTINUE
+        if self._ocr_battle_false():
+            # 通用战斗主题: 失败banner模板失配, 盲点banner区域推进结算
+            logger.warning('False battle (ocr)')
+            self.click(self.C_WIN_1, interval=0.8)
             bw_ctx.completion = True
             return HookSignal.CONTINUE
         return HookSignal.CONTINUE

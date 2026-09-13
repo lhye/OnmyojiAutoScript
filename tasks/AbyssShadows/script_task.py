@@ -549,11 +549,19 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
         # 点击返回
         while 1:
             self.screenshot()
-            if self.appear_then_click(self.I_EXIT, interval=2):
-                continue
             if self.appear_then_click(self.I_EXIT_ENSURE, interval=2):
                 continue
+            if self._click_exit():
+                continue
             if self.appear_then_click(self.I_WIN, interval=2):
+                continue
+            if self._ocr_battle_win():
+                # 通用战斗主题: 胜利banner模板失配, 盲点banner区域推进结算
+                self.click(self.C_WIN_1, interval=2)
+                continue
+            if self._ocr_battle_false():
+                # 通用战斗主题: 失败banner(含撤退判定)模板失配, 盲点banner区域推进
+                self.click(random.choice([self.C_WIN_1, self.C_WIN_2]), interval=2)
                 continue
             if self.appear(self.I_ABYSS_NAVIGATION):
                 break
