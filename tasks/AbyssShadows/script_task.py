@@ -540,18 +540,24 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
                 self.screenshot()
                 if self.appear_then_click(self.I_WIN, interval=1.5):
                     break
+                if self._universal_battle and not self._universal_battle_running():
+                    # 通用战斗主题: 鬼火消失=战斗已结束(boss被击杀), 提前进入收尾
+                    # (不依赖I_WIN: 狭间结算"胜利"为专属书法样式, 旧图失配曾导致死等30秒)
+                    logger.info("Universal battle ended before combat time")
+                    break
             logger.info("Combat time ended, proceeding to exit.")
             self.device.stuck_record_clear()
         # 战斗提前结束这时没有返回按钮
         if self._universal_battle and not self._universal_battle_running():
-            # 通用战斗主题: 鬼火消失=战斗已结束, 胜利横幅需点击才消失(不使用OCR)
-            self._universal_click_banner()
-            return True
-        if self.appear_then_click(self.I_WIN, interval=1.5):
+            # 通用战斗主题: 鬼火消失=战斗已结束(胜负无需区分, 狭间按伤害计分)
+            # 不再直接return: 狭间结算画面多层(横幅/伤害面板/点击继续), 固定3次盲点可能不够,
+            # 统一落入下方收尾循环, 以I_ABYSS_NAVIGATION出现为完成标志
+            pass
+        elif self.appear_then_click(self.I_WIN, interval=1.5):
             return True
 
         # 点击返回
-        banner_clicks = 0
+        banner_timer = Timer(30).start()
         while 1:
             self.screenshot()
             if self.appear_then_click(self.I_EXIT_ENSURE, interval=2):
@@ -563,9 +569,9 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
             if self.appear_then_click(self.I_REWARD, interval=2):
                 # 胜利后的领奖画面(公共资产, 全主题一致): 点击继续
                 continue
-            if self._universal_battle and banner_clicks < 3:
-                # 通用战斗主题: 撤退产生的失败横幅需点击才消失, 盲点推进(次数上限防误点地图)
-                banner_clicks += 1
+            if self._universal_battle and not banner_timer.reached():
+                # 通用战斗主题: 结算横幅需点击才消失, 时间上限内持续盲点推进
+                # (原次数上限3会在狭间boss结算等多层画面耗尽后空转, 导致GameStuckError)
                 self._universal_click_banner(count=1, delay=1)
                 continue
             if self.appear(self.I_ABYSS_NAVIGATION):
