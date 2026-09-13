@@ -241,6 +241,13 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
                     continue
                 if self.appear(self.I_D_CHECK_BAN):
                     continue
+                # 点击退出后确认框弹出有延迟, 此时三个元素均不可见; 提前return会让确认框残留,
+                # 上层battle_prepare在遮挡下盲点导致GameTooManyClickError, 故短轮询确认框点掉后再返回
+                ensure_timer = Timer(3).start()
+                while not ensure_timer.reached():
+                    self.screenshot()
+                    if self.appear_then_click(self.I_EXIT_ENSURE, interval=1.2):
+                        break
                 return
             if self.appear(self.I_D_FAIL) or self.appear(self.I_FALSE):
                 return
@@ -271,8 +278,20 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
         self.maybe_screenshot(skip_screenshot)
         score = self.current_score
         self.is_celeb = False
-        if self.appear(self.I_D_CELEB_STAR) or self.appear(self.I_D_CELEB_HONOR):
-            self.is_celeb = True
+        # 名士界面无积分数字显示, 非名士界面无名士标识: 二者必居其一
+        # 两者皆空说明页面转场淡入未完成(page arrived后0.6s截图星星未渲染, 曾导致误判非名士而开打)
+        # 因此轮询等待二者其一命中(上限10s), 而非固定sleep(模拟器速度不可控)
+        wait_timer = Timer(10).start()
+        while not wait_timer.reached():
+            if self.appear(self.I_D_CELEB_STAR) or self.appear(self.I_D_CELEB_HONOR):
+                self.is_celeb = True
+                break
+            score, remain, total = self.O_D_SCORE.ocr(self.device.image)
+            if score != 0:
+                break
+            sleep(0.5)
+            self.screenshot()
+        if self.is_celeb:
             if self.battle_win_count - self.pre_battle_win_cnt == 1:
                 self.pre_battle_win_cnt = self.battle_win_count
                 score += 100
@@ -280,7 +299,6 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
                 self.pre_battle_lose_cnt = self.battle_lose_count
                 score -= 100
         else:
-            score, remain, total = self.O_D_SCORE.ocr(self.device.image)
             if score > 10000:
                 # 识别错误分数超过一万, 去掉最高位
                 logger.warning('Recognition error, score is too high')
