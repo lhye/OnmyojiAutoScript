@@ -152,14 +152,18 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
         self.limit_time: timedelta = self.conf.general_climb.limit_time_v
         #
         for climb_type in self.conf.general_climb.run_sequence_v:
-            # 进入到活动的主页面，不是具体的战斗页面
+            # 进入到亗地回响地图
             self.ui_get_current_page()
-            self.ui_goto(game.page_climb_act)
+            self.ui_goto(game.page_map)
             try:
+                # 合战派遣(有空位才派, 每日一次, 已满直接跳过)
+                self.hezhan_dispatch()
+                # 清结算提示并进入虚无精锐准备页
+                self._enter_battle_page()
                 method_func = getattr(self, f'_run_{climb_type}')
                 method_func()
             except LimitCountOut as e:
-                self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_MAIN, interval=2.8)
+                self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_MAP, interval=2.8)
             except LimitTimeOut as e:
                 break
             finally:
@@ -180,8 +184,6 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             更新前请先看 ./README.md
         """
         logger.hr(f'Start run climb type PASS', 1)
-        self.ui_clicks([self.I_TO_BATTLE_MAIN, self.I_TO_BATTLE_MAIN_2],
-                       stop=self.I_CHECK_BATTLE_MAIN, interval=1)
         self.switch_soul(self.I_BATTLE_MAIN_TO_RECORDS, self.I_CHECK_BATTLE_MAIN)
         self.switch_climb_mode_in_game('pass')
 
@@ -211,15 +213,13 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             if self.start_battle():
                 continue
 
-        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_MAIN, interval=4.5)
+        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_MAP, interval=4.5)
 
     def _run_ap(self):
         """
             更新前请先看 ./README.md
         """
         logger.hr(f'Start run climb type AP')
-        self.ui_clicks([self.I_TO_BATTLE_MAIN, self.I_TO_BATTLE_MAIN_2],
-                       stop=self.I_CHECK_BATTLE_MAIN, interval=1)
         self.switch_soul(self.I_BATTLE_MAIN_TO_RECORDS, self.I_CHECK_BATTLE_MAIN)
         self.switch_climb_mode_in_game('ap')
 
@@ -244,44 +244,136 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             if self.start_battle():
                 continue
 
-        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_MAIN, interval=4.5)
+        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_MAP, interval=4.5)
 
     def _run_boss(self):
         """
-        更新前请先看 ./README.md
+        拾光永恒活动无独立boss爬塔, 旧配置序列兼容用
         """
         logger.hr(f'Start run climb type BOSS')
-
-        self.ui_clicks([self.I_TO_BATTLE_BOSS],
-                       stop=self.I_CHECK_BATTLE_BOSS, interval=1)
-
-
-        while 1:
-            self.screenshot()
-            self.put_status()
-            # --------------------------------------------------------------
-            if not self.ocr_appear(self.O_FIRE):
-                self.appear_then_click(self.I_CHECK_BATTLE_BOSS, interval=4)
-                continue
-
-            if self.conf.general_climb.random_sleep:
-                random_sleep(probability=0.2)
-            if self.start_battle():
-                continue
-
-        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_BOSS, interval=4.5)
+        logger.warning(f'climb type [boss] is not supported in this activity, skip')
 
     def _run_ap100(self):
         """
-        更新前请先看 ./README.md
+        拾光永恒活动无100体爬塔, 旧配置序列兼容用
         """
         logger.hr(f'Start run climb type AP100')
+        logger.warning(f'climb type [ap100] is not supported in this activity, skip')
+
+    def hezhan_dispatch(self):
+        """合战派遣: 地图上存在空余上阵位时, 依次派遣阴阳师(每日一次, 无空位直接跳过)
+        上阵按钮金/灰同结构仅亮度不同: 金色(正式派遣)才点, 灰色(1/12时低档)点加号提档, 提满仍灰则放弃"""
+        if not self.conf.general_climb.hezhan_dispatch:
+            return
+        if not self.appear(self.I_DEPLOY_PLUS):
+            logger.info('Hezhan dispatch: no empty slot, skip')
+            return
+        logger.hr('Hezhan dispatch', 2)
+        timeout_timer = Timer(150).start()
+        select_timer = Timer(0).start()  # 点+号后: 窗口内点卡位等选人面板出现
+        deploy_timer = Timer(0).start()  # 上阵后: 合战动画期, 界面整体关闭回地图
+        done_timer = None  # 全部完成复查计时(防弹窗关闭动画竞态误判)
+        plus_count = 0  # 灰色提档加号点击次数
+        while 1:
+            self.screenshot()
+            if timeout_timer.reached():
+                logger.warning('Hezhan dispatch timeout')
+                break
+            # 通用弹窗(含合战派遣奖励的白石晶宝箱弹窗)
+            if self.appear_then_click(self.I_UI_CONFIRM, interval=1) or \
+                    self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=1):
+                continue
+            if self.ui_reward_appear_click():
+                continue
+            if self.appear_then_click(self.I_CHEST_CLOSE, interval=1.5):
+                logger.info('Hezhan reward chest popup closed')
+                continue
+            if self.appear_then_click(self.I_SUPPLY_CLOSE, interval=1.5):
+                logger.info('Hezhan daily supply popup closed')
+                continue
+            # 派遣面板已开: 按钮亮度区分金/灰, 只点金色正式派遣
+            if self.appear(self.I_DEPLOY):
+                if self.I_DEPLOY.match_brightness(self.device.image, threshold=0.7, roi=self.I_DEPLOY.roi_front):
+                    # click返回False表示处于interval冷却期未实际点击
+                    if self.click(self.I_DEPLOY, interval=2):
+                        logger.info('Hezhan onmyoji deployed, wait interface close')
+                        deploy_timer = Timer(5).start()  # 每派一个界面整体关闭回地图, 动画约3s
+                        plus_count = 0
+                else:
+                    # 灰色低档: 点加号提档直到变金, 11次(满12档)后仍灰则放弃
+                    if plus_count >= 11:
+                        logger.warning('Hezhan deploy still gray after max plus, give up dispatch')
+                        self.click(self.C_MAP_CLOSE)
+                        break
+                    self.click(self.C_HEZHAN_PLUS, interval=1)
+                    plus_count += 1
+                continue
+            # 上阵后合战动画期: 界面整体关闭, 弹窗由上方分支处理, 此处只等待
+            if not deploy_timer.reached():
+                continue
+            # 选择栏/面板操作窗口期: 点第一个阴阳师卡位直到面板出现
+            if not select_timer.reached():
+                self.click(self.C_HEZHAN_FIRST, interval=1.5)
+                continue
+            # 地图无空余上阵位: 派遣全部完成
+            # 复查3秒防竞态: 宝箱弹窗关闭动画中+号短暂被遮, 立即判完成会漏派
+            if self.appear(self.I_DEPLOY_PLUS):
+                done_timer = None
+            elif done_timer is None:
+                done_timer = Timer(3).start()
+            elif done_timer.reached():
+                logger.info('Hezhan dispatch all done')
+                break
+            # 地图有空位: 点+号重新进入派遣选人画面
+            if self.appear_then_click(self.I_DEPLOY_PLUS, interval=2.5):
+                select_timer = Timer(5).start()
+                plus_count = 0
+                continue
+
+    def _enter_battle_page(self):
+        """从亗地回响地图进入虚无精锐准备页:
+        结算提示遮挡时盲点空白区域, 直到虚无精锐标签出现再点击进入"""
+        logger.hr('Enter boss battle page', 2)
+        timeout_timer = Timer(60).start()
+        blank_timer = Timer(3).start()
+        while 1:
+            self.screenshot()
+            if timeout_timer.reached():
+                logger.warning('Enter boss battle page timeout')
+                break
+            # 到达boss准备页
+            if self.appear(self.I_CHECK_BATTLE_MAIN):
+                logger.info('Arrive boss battle page')
+                break
+            # 通用弹窗优先(含合战派遣奖励的白石晶宝箱弹窗)
+            if self.appear_then_click(self.I_UI_CONFIRM, interval=1) or \
+                    self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=1):
+                continue
+            if self.ui_reward_appear_click():
+                continue
+            if self.appear_then_click(self.I_CHEST_CLOSE, interval=1.5):
+                logger.info('Reward chest popup closed')
+                blank_timer.reset()
+                continue
+            if self.appear_then_click(self.I_SUPPLY_CLOSE, interval=1.5):
+                logger.info('Daily supply popup closed')
+                blank_timer.reset()
+                continue
+            # 虚无精锐标签出现: 点击进入
+            if self.appear_then_click(self.I_BOSS_LABEL, interval=3):
+                continue
+            # 结算提示遮挡: 盲点空白区域直到标签出现
+            if blank_timer.reached():
+                self.click(self.C_MAP_BLANK, interval=1.5)
+                blank_timer.reset()
 
     def start_battle(self):
         click_times, max_times = 0, random.randint(4, 8)
         while 1:
             self.screenshot()
-            if self.is_in_battle(False):
+            # 战斗内或战斗准备界面(虚无精锐大鼓"准备"页): 交给run_general_battle处理
+            # 该准备界面I_CHECK_BATTLE_MAIN不命中, 不跳出会在此空转直到GameStuck(2026-09-16实测)
+            if self.is_in_battle(False) or self.is_in_prepare(False):
                 break
             if click_times >= max_times:
                 logger.warning(f'Climb {self.climb_type} cannot enter, maybe already end, try next')
@@ -289,8 +381,8 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             if (self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=1) or
                     self.appear_then_click(self.I_UI_CONFIRM, interval=1) ):
                 continue
-            if (self.appear(self.I_CHECK_BATTLE_MAIN, interval=1) or self.appear(self.I_CHECK_BATTLE_BOSS, interval=1)) \
-                    and  self.ocr_appear_click(self.O_FIRE, interval=2):
+            if (self.appear(self.I_CHECK_BATTLE_MAIN, interval=1)) \
+                    and self.ocr_appear_click(self.O_FIRE, interval=2):
                 click_times += 1
                 logger.info(f'Try click fire, remain times[{max_times - click_times}]')
                 continue
@@ -353,10 +445,6 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             remain_times = self.O_REMAIN_PASS.ocr_digit(self.device.image)
         if self.climb_type == 'ap':
             remain_times = self.O_REMAIN_AP.ocr_digit(self.device.image)
-        if self.climb_type == 'boss':
-            _, remain_times, _ = self.O_REMAIN_BOSS.ocr_digit_counter(self.device.image)
-        if self.climb_type == 'ap100':
-            remain_times = self.O_REMAIN_AP100.ocr_digit(self.device.image)
         return remain_times > 0
 
     def get_general_battle_conf(self) -> tasks.Component.GeneralBattle.config_general_battle.GeneralBattleConfig:

@@ -96,9 +96,16 @@ class GeneralBattleConfig(BaseModel):
     enable_ap100_anti_detect: bool = Field(default=False, description='enable_ap100_anti_detect_help')
 
 
+class ActivityClimb(GeneralClimb):
+    """拾光永恒活动爬塔配置: 仅 ap(体力票) / pass(灵符票) 两种模式"""
+    run_sequence: str = Field(default='ap,pass',
+                              description='运行爬塔顺序(ap:体力票,pass:灵符票)\n英文逗号分隔,从左到右运行')
+    hezhan_dispatch: bool = Field(default=True, description='进地图后自动合战派遣阴阳师(每日一次)')
+
+
 class ActivityShikigami(ConfigBase):
     scheduler: Scheduler = Field(default_factory=Scheduler)
-    general_climb: GeneralClimb = Field(default_factory=GeneralClimb)
+    general_climb: ActivityClimb = Field(default_factory=ActivityClimb)
     switch_soul_config: SwitchSoulConfig = Field(default_factory=SwitchSoulConfig)
     general_battle: GeneralBattleConfig = Field(default_factory=GeneralBattleConfig)
 

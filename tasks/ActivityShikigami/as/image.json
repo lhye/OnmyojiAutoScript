@@ -1,47 +1,164 @@
 [
   {
-    "itemName": "lock",
-    "imageName": "as_lock.png",
-    "roiFront": "825,657,28,25",
-    "roiBack": "739,432,440,266",
+    "itemName": "shi",
+    "imageName": "as_shi.png",
+    "roiFront": "1180,138,50,52",
+    "roiBack": "1150,105,125,120",
     "method": "Template matching",
-    "threshold": 0.5,
-    "description": "上锁图标"
+    "threshold": 0.7,
+    "description": "庭院右栏活动入口icon"
   },
   {
-    "itemName": "unlock",
-    "imageName": "as_unlock.png",
-    "roiFront": "884,648,28,25",
-    "roiBack": "733,426,444,276",
-    "method": "Template matching",
-    "threshold": 0.5,
-    "description": "还未上锁图片"
-  },
-  {
-    "itemName": "climb_mode_pass",
-    "imageName": "as_climb_mode_pass.png",
-    "roiFront": "1142,547,21,21",
-    "roiBack": "1129,516,45,74",
+    "itemName": "check_act_list",
+    "imageName": "as_check_act_list.png",
+    "roiFront": "148,17,130,42",
+    "roiBack": "100,5,260,75",
     "method": "Template matching",
     "threshold": 0.8,
-    "description": "活动爬塔标志"
+    "description": "活动总览页标志"
+  },
+  {
+    "itemName": "goto_act",
+    "imageName": "as_goto_act.png",
+    "roiFront": "1040,633,200,48",
+    "roiBack": "1000,610,280,95",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "活动总览右下角前往活动按钮"
+  },
+  {
+    "itemName": "check_main",
+    "imageName": "as_check_main.png",
+    "roiFront": "148,12,155,44",
+    "roiBack": "100,5,310,75",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "拾光永恒活动主界面标志"
+  },
+  {
+    "itemName": "goto_map",
+    "imageName": "as_goto_map.png",
+    "roiFront": "318,173,98,98",
+    "roiBack": "280,140,180,170",
+    "method": "Template matching",
+    "threshold": 0.7,
+    "description": "回响之地入口"
+  },
+  {
+    "itemName": "check_map",
+    "imageName": "as_check_map.png",
+    "roiFront": "155,12,140,46",
+    "roiBack": "100,5,310,75",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "亗地回响地图标志"
+  },
+  {
+    "itemName": "deploy_plus",
+    "imageName": "as_deploy_plus.png",
+    "roiFront": "326,133,42,42",
+    "roiBack": "230,60,400,530",
+    "method": "Template matching",
+    "threshold": 0.75,
+    "description": "地图上空余的上阵加号"
+  },
+  {
+    "itemName": "boss_label",
+    "imageName": "as_boss_label.png",
+    "roiFront": "565,385,175,42",
+    "roiBack": "450,350,400,150",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "地图中央虚无精锐标签"
+  },
+  {
+    "itemName": "deploy",
+    "imageName": "as_deploy.png",
+    "roiFront": "1000,466,108,39",
+    "roiBack": "950,440,220,95",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "派遣面板上阵按钮(金灰同结构,金色判定用match_brightness)"
+  },
+  {
+    "itemName": "chest_close",
+    "imageName": "as_chest_close.png",
+    "roiFront": "1017,97,44,46",
+    "roiBack": "990,80,100,80",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "白石晶宝箱弹窗关闭按钮(合战派遣奖励弹出)"
+  },
+  {
+    "itemName": "supply_close",
+    "imageName": "as_supply_close.png",
+    "roiFront": "1135,172,43,46",
+    "roiBack": "1100,150,110,90",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "神木补给界面关闭按钮(每日首次进活动弹出,发当日门票)"
+  },
+  {
+    "itemName": "check_battle_main",
+    "imageName": "as_check_battle_main.png",
+    "roiFront": "158,14,165,42",
+    "roiBack": "100,5,360,75",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "虚无精锐boss准备页标志"
+  },
+  {
+    "itemName": "battle_main_to_records",
+    "imageName": "as_battle_main_to_records.png",
+    "roiFront": "1006,556,52,52",
+    "roiBack": "965,530,140,105",
+    "method": "Template matching",
+    "threshold": 0.7,
+    "description": "boss准备页式神录按钮"
   },
   {
     "itemName": "climb_mode_ap",
     "imageName": "as_climb_mode_ap.png",
-    "roiFront": "1093,544,20,20",
-    "roiBack": "1055,495,100,100",
+    "roiFront": "1116,554,36,20",
+    "roiBack": "1100,545,130,40",
     "method": "Template matching",
     "threshold": 0.8,
-    "description": "体力爬塔标志"
+    "description": "AP模式标志(x6票)"
+  },
+  {
+    "itemName": "climb_mode_pass",
+    "imageName": "as_climb_mode_pass.png",
+    "roiFront": "1133,530,64,26",
+    "roiBack": "1105,518,140,50",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "PASS模式标志(灵符x1), 判断模式时须先测AP再测PASS"
   },
   {
     "itemName": "climb_mode_switch",
     "imageName": "as_climb_mode_switch.png",
-    "roiFront": "1236,543,25,26",
-    "roiBack": "1174,511,104,82",
+    "roiFront": "1236,543,22,30",
+    "roiBack": "1215,533,65,50",
     "method": "Template matching",
     "threshold": 0.8,
-    "description": "切换按键"
+    "description": "AP/PASS切换按键"
+  },
+  {
+    "itemName": "lock",
+    "imageName": "as_lock.png",
+    "roiFront": "790,647,40,40",
+    "roiBack": "740,615,120,85",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "阵容已锁定图标"
+  },
+  {
+    "itemName": "unlock",
+    "imageName": "as_unlock.png",
+    "roiFront": "790,647,40,40",
+    "roiBack": "740,615,120,85",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "阵容未锁定图标"
   }
 ]

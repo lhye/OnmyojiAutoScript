@@ -28,5 +28,29 @@
     "roiFront": "42,94,1207,543",
     "roiBack": "42,94,1207,543",
     "description": "description"
+  },
+  {
+    "itemName": "hezhan_first",
+    "roiFront": "80,560,110,120",
+    "roiBack": "80,560,110,120",
+    "description": "合战派遣底部选择栏第一个阴阳师卡位"
+  },
+  {
+    "itemName": "hezhan_plus",
+    "roiFront": "1145,348,44,44",
+    "roiBack": "1145,348,44,44",
+    "description": "派遣面板放置时间加号(灰色上阵时提档)"
+  },
+  {
+    "itemName": "map_blank",
+    "roiFront": "860,200,200,120",
+    "roiBack": "860,200,200,120",
+    "description": "亗地回响地图右侧空白安全点击区(清结算提示)"
+  },
+  {
+    "itemName": "map_close",
+    "roiFront": "60,40,100,70",
+    "roiBack": "60,40,100,70",
+    "description": "地图左上空白区(放弃派遣时点击关闭面板)"
   }
 ]
