@@ -79,6 +79,9 @@ class GeneralBattle(BattleWait, GeneralBuff):
                         self.switch_preset_team(config.preset_enable, config.preset_group, config.preset_team)
                         self.check_and_open_buff(buff)
                         confed = True
+                        # 预设/加成配置的耗时(面板开关动画+OCR重试, 实测可达5s+)不应挤占准备点击预算,
+                        # 否则准备只来得及点一次, 且该次点击易被预设面板关闭动画吞掉(2026-09-15 悬赏秘闻卡死)
+                        timeout_timer = Timer(timeout).start()
                 # 点击准备(锁定阵容自动点准备,不锁定阵容前面也已经配置完毕需要点准备)
                 if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8):
                     continue
@@ -88,11 +91,13 @@ class GeneralBattle(BattleWait, GeneralBuff):
             sleep(random.uniform(0.4, 0.8))
         return False
 
-    def retry_prepare_click(self, timeout: float = 3) -> bool:
+    def retry_prepare_click(self, timeout: float = 8) -> bool:
         """
         battle_before 超时后的补偿: 再次识别画面并尝试开始战斗。
         点击"开始战斗"可能被预设面板关闭动画拦截而未生效, 超时返回后画面已稳定,
         此时若仍在战斗准备界面则再点击一次开始战斗; 若已进入战斗则直接成功。
+        窗口不能太短: 预设面板关闭动画+转场可能超过3s, 期间is_in_prepare不命中导致补点落空
+        (2026-09-15 悬赏秘闻卡死实测)。
         :return: True: 超时内确认已进入真实战斗
                  False: 超时仍未进入战斗(界面异常, 应由上层按战斗失败处理)
         """
