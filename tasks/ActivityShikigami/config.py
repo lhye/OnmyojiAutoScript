@@ -97,9 +97,9 @@ class GeneralBattleConfig(BaseModel):
 
 
 class ActivityClimb(GeneralClimb):
-    """拾光永恒活动爬塔配置: 仅 ap(体力票) / pass(灵符票) 两种模式"""
-    run_sequence: str = Field(default='ap,pass',
-                              description='运行爬塔顺序(ap:体力票,pass:灵符票)\n英文逗号分隔,从左到右运行')
+    """拾光永恒活动爬塔配置: ap(体力票) / pass(灵符票) / boss(炼石成金首领) 三种模式"""
+    run_sequence: str = Field(default='ap,pass,boss',
+                              description='运行爬塔顺序(ap:体力票,pass:灵符票,boss:炼石成金首领)\n英文逗号分隔,从左到右运行')
     hezhan_dispatch: bool = Field(default=True, description='进地图后自动合战派遣阴阳师(每日一次)')
 
 

@@ -27,6 +27,12 @@ page_act_main.link(button=asa.I_GOTO_MAP, destination=page_map)
 
 # 虚无精锐 boss 准备页（爬塔战斗页）
 page_climb_act = Page(asa.I_CHECK_BATTLE_MAIN)
-page_climb_act.additional = [gga.I_UI_REWARD, asa.I_SKIP_BUTTON, asa.I_CONFIRM_SKIP, asa.I_RED_EXIT]
+page_climb_act.additional = [gga.I_UI_REWARD, asa.I_GIFT_CLOSE, asa.I_SKIP_BUTTON, asa.I_CONFIRM_SKIP, asa.I_RED_EXIT]
 page_climb_act.link(button=G.I_BACK_Y, destination=page_map)
 page_map.link(button=asa.I_BOSS_LABEL, destination=page_climb_act)
+
+# 炼石成金 boss 页（拾光永恒首领挑战, 入口在活动主界面左下）
+page_gold_boss = Page(asa.I_CHECK_GOLD_BOSS)
+page_gold_boss.additional = [gga.I_UI_REWARD, asa.I_GIFT_CLOSE, asa.I_SKIP_BUTTON, asa.I_CONFIRM_SKIP, asa.I_RED_EXIT]
+page_gold_boss.link(button=G.I_BACK_Y, destination=page_act_main)
+page_act_main.link(button=asa.I_GOTO_GOLD_BOSS, destination=page_gold_boss)

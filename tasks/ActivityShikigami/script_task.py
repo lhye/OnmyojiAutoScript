@@ -85,7 +85,6 @@ class LimitCountOut(Exception):
 
 class StateMachine(BaseTask):
     run_idx: int = 0  # 当前爬塔类型
-    _count_map = None
 
     @cached_property
     def conf(self) -> GeneralClimb:
@@ -97,15 +96,6 @@ class StateMachine(BaseTask):
             return self.conf.general_climb.run_sequence_v[-1]
         return self.conf.general_climb.run_sequence_v[self.run_idx]
 
-    @property
-    def count_map(self) -> dict[str, int]:
-        """
-        :return: key: climb type, value: run count
-        """
-        if not getattr(self, "_count_map", None):
-            self._count_map = {climb_type: 0 for climb_type in self.conf.general_climb.run_sequence_v}
-        return self._count_map
-
     # ----------------------------------------------------
     def put_status(self):
         """
@@ -113,7 +103,9 @@ class StateMachine(BaseTask):
         """
 
         def get_count(self) -> int:
-            return self.count_map[self.climb_type]
+            # current_count由run_general_battle每次战斗自增, switch_next切换类型时归零
+            # (原count_map从未自增导致次数限制永不生效)
+            return self.current_count
 
         def get_limit(self) -> int:
             limit = getattr(self.conf.general_climb, f'{self.climb_type}_limit', 0)
@@ -152,18 +144,25 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
         self.limit_time: timedelta = self.conf.general_climb.limit_time_v
         #
         for climb_type in self.conf.general_climb.run_sequence_v:
-            # 进入到亗地回响地图
             self.ui_get_current_page()
-            self.ui_goto(game.page_map)
             try:
-                # 合战派遣(有空位才派, 每日一次, 已满直接跳过)
-                self.hezhan_dispatch()
-                # 清结算提示并进入虚无精锐准备页
-                self._enter_battle_page()
-                method_func = getattr(self, f'_run_{climb_type}')
-                method_func()
+                if climb_type == 'boss':
+                    # 炼石成金首领: 入口在活动主界面左下
+                    self.ui_goto(game.page_act_main)
+                    self._run_boss()
+                else:
+                    # 进入到亗地回响地图
+                    self.ui_goto(game.page_map)
+                    # 合战派遣(有空位才派, 每日一次, 已满直接跳过)
+                    self.hezhan_dispatch()
+                    # 清结算提示并进入虚无精锐准备页
+                    self._enter_battle_page()
+                    method_func = getattr(self, f'_run_{climb_type}')
+                    method_func()
             except LimitCountOut as e:
-                self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_MAP, interval=2.8)
+                # boss页返回活动主界面, 其余爬塔页返回地图
+                stop = self.I_CHECK_MAIN if climb_type == 'boss' else self.I_CHECK_MAP
+                self.ui_click(self.I_UI_BACK_YELLOW, stop=stop, interval=2.8)
             except LimitTimeOut as e:
                 break
             finally:
@@ -193,6 +192,9 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             self.screenshot()
             self.put_status()
             # --------------------------------------------------------------
+            if self.appear_then_click(self.I_GIFT_CLOSE, interval=1.5):
+                logger.info('Gift package popup closed')
+                continue
             if (self.appear_then_click(self.I_UI_CONFIRM, interval=0.5)
                     or self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=0.5)):
                 continue
@@ -228,6 +230,10 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             self.screenshot()
             self.put_status()
             # --------------------------------------------------------------
+            # 礼包弹窗优先关闭: 盖住挑战按钮导致O_FIRE永远识别不到, 且此时点其他位置可能误购
+            if self.appear_then_click(self.I_GIFT_CLOSE, interval=1.5):
+                logger.info('Gift package popup closed')
+                continue
             if not ocr_limit_timer.reached():
                 continue
             ocr_limit_timer.reset()
@@ -247,11 +253,39 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
         self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_MAP, interval=4.5)
 
     def _run_boss(self):
-        """
-        拾光永恒活动无独立boss爬塔, 旧配置序列兼容用
-        """
+        """炼石成金首领: 活动主界面左下入口, 点挑战直接开打(x12票), 支持切换御魂+次数限制"""
         logger.hr(f'Start run climb type BOSS')
-        logger.warning(f'climb type [boss] is not supported in this activity, skip')
+        self.ui_click(self.I_GOTO_GOLD_BOSS, stop=self.I_CHECK_GOLD_BOSS, interval=2)
+        self.switch_soul(self.I_BATTLE_MAIN_TO_RECORDS, self.I_CHECK_GOLD_BOSS)
+
+        ocr_limit_timer = Timer(1).start()
+        while 1:
+            self.screenshot()
+            self.put_status()
+            # --------------------------------------------------------------
+            if self.appear_then_click(self.I_GIFT_CLOSE, interval=1.5):
+                logger.info('Gift package popup closed')
+                continue
+            if (self.appear_then_click(self.I_UI_CONFIRM, interval=0.5)
+                    or self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=0.5)):
+                continue
+            if self.ui_reward_appear_click():
+                continue
+            if not ocr_limit_timer.reached():
+                continue
+            ocr_limit_timer.reset()
+            if not self.ocr_appear(self.O_BOSS_FIRE):
+                continue
+            #  --------------------------------------------------------------
+            if not self.check_tickets_enough():
+                logger.warning(f'No boss tickets left, wait for next time')
+                break
+            if self.conf.general_climb.random_sleep:
+                random_sleep(probability=0.2)
+            if self.start_battle(check_image=self.I_CHECK_GOLD_BOSS, fire=self.O_BOSS_FIRE):
+                continue
+
+        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_MAIN, interval=4.5)
 
     def _run_ap100(self):
         """
@@ -290,6 +324,9 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
                 continue
             if self.appear_then_click(self.I_SUPPLY_CLOSE, interval=1.5):
                 logger.info('Hezhan daily supply popup closed')
+                continue
+            if self.appear_then_click(self.I_GIFT_CLOSE, interval=1.5):
+                logger.info('Hezhan gift package popup closed')
                 continue
             # 派遣面板已开: 按钮亮度区分金/灰, 只点金色正式派遣
             if self.appear(self.I_DEPLOY):
@@ -359,6 +396,10 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
                 logger.info('Daily supply popup closed')
                 blank_timer.reset()
                 continue
+            if self.appear_then_click(self.I_GIFT_CLOSE, interval=1.5):
+                logger.info('Gift package popup closed')
+                blank_timer.reset()
+                continue
             # 虚无精锐标签出现: 点击进入
             if self.appear_then_click(self.I_BOSS_LABEL, interval=3):
                 continue
@@ -367,7 +408,9 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
                 self.click(self.C_MAP_BLANK, interval=1.5)
                 blank_timer.reset()
 
-    def start_battle(self):
+    def start_battle(self, check_image: RuleImage = None, fire: RuleOcr = None):
+        check_image = check_image if check_image is not None else self.I_CHECK_BATTLE_MAIN
+        fire = fire if fire is not None else self.O_FIRE
         click_times, max_times = 0, random.randint(4, 8)
         while 1:
             self.screenshot()
@@ -378,11 +421,14 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             if click_times >= max_times:
                 logger.warning(f'Climb {self.climb_type} cannot enter, maybe already end, try next')
                 return
+            if self.appear_then_click(self.I_GIFT_CLOSE, interval=1.5):
+                logger.info('Gift package popup closed')
+                continue
             if (self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=1) or
                     self.appear_then_click(self.I_UI_CONFIRM, interval=1) ):
                 continue
-            if (self.appear(self.I_CHECK_BATTLE_MAIN, interval=1)) \
-                    and self.ocr_appear_click(self.O_FIRE, interval=2):
+            if (self.appear(check_image, interval=1)) \
+                    and self.ocr_appear_click(fire, interval=2):
                 click_times += 1
                 logger.info(f'Try click fire, remain times[{max_times - click_times}]')
                 continue
@@ -436,7 +482,8 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
         :return: True 可以运行 or False
         """
         logger.hr(f'Check {self.climb_type} tickets')
-        if not self.wait_until_appear(self.O_FIRE, wait_time=3):
+        fire = self.O_BOSS_FIRE if self.climb_type == 'boss' else self.O_FIRE
+        if not self.wait_until_appear(fire, wait_time=3):
             logger.warning(f'Detect fire fail, try reidentify')
             return False
         self.screenshot()
@@ -445,6 +492,8 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             remain_times = self.O_REMAIN_PASS.ocr_digit(self.device.image)
         if self.climb_type == 'ap':
             remain_times = self.O_REMAIN_AP.ocr_digit(self.device.image)
+        if self.climb_type == 'boss':
+            remain_times = self.O_BOSS_REMAIN.ocr_digit(self.device.image)
         return remain_times > 0
 
     def get_general_battle_conf(self) -> tasks.Component.GeneralBattle.config_general_battle.GeneralBattleConfig:

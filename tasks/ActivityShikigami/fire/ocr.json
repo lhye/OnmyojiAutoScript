@@ -25,5 +25,23 @@
     "method": "Default",
     "keyword": "",
     "description": "PASS门票剩余数量"
+  },
+  {
+    "itemName": "boss_fire",
+    "roiFront": "1110,575,120,75",
+    "roiBack": "1095,560,150,105",
+    "mode": "Single",
+    "method": "Default",
+    "keyword": "挑战",
+    "description": "炼石成金挑战按钮"
+  },
+  {
+    "itemName": "boss_remain",
+    "roiFront": "1167,638,52,26",
+    "roiBack": "1155,630,75,42",
+    "mode": "Digit",
+    "method": "Default",
+    "keyword": "",
+    "description": "炼石成金挑战票数(x12)"
   }
 ]

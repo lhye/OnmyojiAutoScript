@@ -160,5 +160,32 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "阵容未锁定图标"
+  },
+  {
+    "itemName": "gift_close",
+    "imageName": "as_gift_close.png",
+    "roiFront": "1167,88,34,36",
+    "roiBack": "1140,60,100,90",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "战斗补给推荐礼包弹窗关闭按钮(爬塔过程弹出)"
+  },
+  {
+    "itemName": "goto_gold_boss",
+    "imageName": "as_goto_gold_boss.png",
+    "roiFront": "154,418,50,74",
+    "roiBack": "110,380,140,150",
+    "method": "Template matching",
+    "threshold": 0.75,
+    "description": "活动主界面左下炼石成金首领入口"
+  },
+  {
+    "itemName": "check_gold_boss",
+    "imageName": "as_check_gold_boss.png",
+    "roiFront": "152,14,133,45",
+    "roiBack": "100,5,310,75",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "炼石成金boss页标题标志"
   }
 ]

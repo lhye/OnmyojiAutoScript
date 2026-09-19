@@ -76,6 +76,12 @@ class ActivityShikigamiAssets:
 	I_RED_EXIT = RuleImage(roi_front=(1162,96,39,38), roi_back=(1120,49,110,135), threshold=0.8, method="Template matching", file="./tasks/ActivityShikigami/as/as_red_exit.png")
 	# 确认跳过
 	I_CONFIRM_SKIP = RuleImage(roi_front=(707,442,137,38), roi_back=(656,397,231,124), threshold=0.8, method="Template matching", file="./tasks/ActivityShikigami/as/as_confirm_skip.png")
+	# 战斗补给推荐礼包弹窗关闭按钮(爬塔过程弹出)
+	I_GIFT_CLOSE = RuleImage(roi_front=(1167,88,34,36), roi_back=(1140,60,100,90), threshold=0.8, method="Template matching", file="./tasks/ActivityShikigami/as/as_gift_close.png")
+	# 活动主界面左下炼石成金首领入口
+	I_GOTO_GOLD_BOSS = RuleImage(roi_front=(154,418,50,74), roi_back=(110,380,140,150), threshold=0.75, method="Template matching", file="./tasks/ActivityShikigami/as/as_goto_gold_boss.png")
+	# 炼石成金boss页标题标志
+	I_CHECK_GOLD_BOSS = RuleImage(roi_front=(152,14,133,45), roi_back=(100,5,310,75), threshold=0.8, method="Template matching", file="./tasks/ActivityShikigami/as/as_check_gold_boss.png")
 
 
 	# Ocr Rule Assets
@@ -85,3 +91,7 @@ class ActivityShikigamiAssets:
 	O_REMAIN_AP = RuleOcr(roi=(800,18,44,34), area=(790,14,64,44), mode="Digit", method="Default", keyword="", name="remain_ap")
 	# PASS门票剩余数量
 	O_REMAIN_PASS = RuleOcr(roi=(1005,18,32,36), area=(998,14,45,44), mode="Digit", method="Default", keyword="", name="remain_pass")
+	# 炼石成金挑战按钮
+	O_BOSS_FIRE = RuleOcr(roi=(1110,575,120,75), area=(1095,560,150,105), mode="Single", method="Default", keyword="挑战", name="boss_fire")
+	# 炼石成金挑战票数(x12)
+	O_BOSS_REMAIN = RuleOcr(roi=(1167,638,52,26), area=(1155,630,75,42), mode="Digit", method="Default", keyword="", name="boss_remain")
