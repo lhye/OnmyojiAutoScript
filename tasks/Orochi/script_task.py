@@ -163,15 +163,8 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
         # 这个时候我已经进入房间了哦
         while 1:
             self.screenshot()
-            # 无论胜利与否, 都会出现是否邀请一次队友
-            # 区别在于，失败的话不会出现那个勾选默认邀请的框
-            if self.check_and_invite(self.config.orochi.invite_config.default_invite):
-                continue
-
-            # 检查猫咪奖励
-            if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
-                continue
-
+            # 次数/时间上限必须在check_and_invite之前判断:
+            # 开战返回True会continue跳过后面的判断, count虚涨永不结束(2026-09-19实锤count到11还在跑)
             if self.current_count >= self.limit_count:
                 if self.is_in_room():
                     logger.info('Orochi count limit out')
@@ -181,6 +174,15 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                 if self.is_in_room():
                     logger.info('Orochi time limit out')
                     break
+
+            # 无论胜利与否, 都会出现是否邀请一次队友
+            # 区别在于，失败的话不会出现那个勾选默认邀请的框
+            if self.check_and_invite(self.config.orochi.invite_config.default_invite):
+                continue
+
+            # 检查猫咪奖励
+            if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
+                continue
 
 
 
@@ -358,15 +360,7 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
         success = True
         while 1:
             self.screenshot()
-            # 无论胜利与否, 都会出现是否邀请一次队友
-            # 区别在于，失败的话不会出现那个勾选默认邀请的框
-            if self.check_and_invite(self.config.orochi.invite_config.default_invite):
-                continue
-
-            # 检查猫咪奖励
-            if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
-                continue
-
+            # 次数/时间上限必须在check_and_invite之前判断, 原因同run_leader
             if self.current_count >= self.limit_count:
                 if self.is_in_room():
                     logger.info('Orochi count limit out')
@@ -376,6 +370,15 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                 if self.is_in_room():
                     logger.info('Orochi time limit out')
                     break
+
+            # 无论胜利与否, 都会出现是否邀请一次队友
+            # 区别在于，失败的话不会出现那个勾选默认邀请的框
+            if self.check_and_invite(self.config.orochi.invite_config.default_invite):
+                continue
+
+            # 检查猫咪奖励
+            if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
+                continue
 
             if not self.is_in_room():
                 if self.is_room_dead():
@@ -425,16 +428,6 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             if self.appear(self.I_MATCHING) or self.appear(self.I_CHECK_EXPLORATION):
                 return True
         return False
-
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        """
-        重写战斗等待: 统一切换到 battle_wait_v2
-        (通用主题: 鬼火消失判定+banner盲点推进; 领奖兼容贪吃鬼/达摩/金达摩)
-        # https://github.com/runhey/OnmyojiAutoScript/issues/95
-        :param random_click_swipt_enable:
-        :return:
-        """
-        return self.battle_wait_v2(random_click_swipt_enable=random_click_swipt_enable)
 
     def orochi_switch_soul(self) -> None:
         # 判断是否开启根据选层切换御魂

@@ -118,8 +118,10 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
 
             # 点击挑战
             if fire:
-                self.click_fire()
-                return True
+                if self.click_fire():
+                    return True
+                # 开战无效(队友未接受邀请), 回到轮询等待队友就绪, 由timer_wait超时兜底
+                continue
 
             if self.timer_invite and self.timer_invite.reached():
                 if is_first:
@@ -196,14 +198,26 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
                 continue
         return True
 
-    def click_fire(self):
+    def click_fire(self) -> bool:
+        """
+        点击挑战按钮直到离开房间(开战生效)
+        邀请发出后队友接受前, 房间加号位变"等待中"导致fire条件误判, 点开战无效;
+        限制点击次数防止触发GameTooManyClickError(2026-09-19魂海实锤连点10次报错)
+        :return: True=开战生效已离开房间, False=多次点击无效(队友未就绪)
+        """
+        click_count = 0
         while 1:
             self.screenshot()
             if not self.is_in_room(False):
-                break
-            if self.appear_then_click(self.I_FIRE, interval=1, threshold=0.7):
+                return True
+            if click_count >= 6:
+                logger.warning('Fire clicked 6 times but still in room, wait for teammate ready')
+                return False
+            if self.appear_then_click(self.I_FIRE, interval=2, threshold=0.7):
+                click_count += 1
                 continue
-            if self.appear_then_click(self.I_FIRE_SEA, interval=1, threshold=0.7):
+            if self.appear_then_click(self.I_FIRE_SEA, interval=2, threshold=0.7):
+                click_count += 1
                 continue
     @cached_property
     def room_type(self) -> RoomType:
