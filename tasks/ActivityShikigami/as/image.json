@@ -187,5 +187,23 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "炼石成金boss页标题标志"
+  },
+  {
+    "itemName": "fire",
+    "imageName": "as_fire_ap.png",
+    "roiFront": "1128,600,90,52",
+    "roiBack": "1090,555,180,130",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "虚无精锐准备页挑战按钮(ap/pass图片匹配替代OCR)"
+  },
+  {
+    "itemName": "boss_fire",
+    "imageName": "as_fire_boss.png",
+    "roiFront": "1144,580,72,54",
+    "roiBack": "1090,550,180,130",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "boss页挑战按钮(镜像帧OCR失效改图片匹配)"
   }
 ]

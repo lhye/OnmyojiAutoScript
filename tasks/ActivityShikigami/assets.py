@@ -92,6 +92,11 @@ class ActivityShikigamiAssets:
 	# PASS门票剩余数量
 	O_REMAIN_PASS = RuleOcr(roi=(1005,18,32,36), area=(998,14,45,44), mode="Digit", method="Default", keyword="", name="remain_pass")
 	# 炼石成金挑战按钮
-	O_BOSS_FIRE = RuleOcr(roi=(1110,575,120,75), area=(1095,560,150,105), mode="Single", method="Default", keyword="挑战", name="boss_fire")
+	# 虚无精锐准备页挑战按钮(ap/pass用图片匹配替代OCR, 定位稳定)
+	I_FIRE = RuleImage(roi_front=(1128,600,90,52), roi_back=(1090,555,180,130), threshold=0.8, method="Template matching", file="./tasks/ActivityShikigami/as/as_fire_ap.png")
+	# boss页挑战按钮(boss页nemu_ipc帧180度镜像, OCR读倒字, 模板匹配+固定点击兜底)
+	I_BOSS_FIRE = RuleImage(roi_front=(1144,580,72,54), roi_back=(1090,550,180,130), threshold=0.8, method="Template matching", file="./tasks/ActivityShikigami/as/as_fire_boss.png")
+	# boss页挑战按钮固定点击区(镜像帧下模板匹配同样失效, 兜底用)
+	C_BOSS_FIRE = RuleClick(roi_front=(1145,580,60,50), roi_back=(1145,580,60,50), name="boss_fire_click")
 	# 炼石成金挑战票数(x12)
 	O_BOSS_REMAIN = RuleOcr(roi=(1167,638,52,26), area=(1155,630,75,42), mode="Digit", method="Default", keyword="", name="boss_remain")

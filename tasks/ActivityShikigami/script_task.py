@@ -160,9 +160,9 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
                     method_func = getattr(self, f'_run_{climb_type}')
                     method_func()
             except LimitCountOut as e:
-                # boss页返回活动主界面, 其余爬塔页返回地图
-                stop = self.I_CHECK_MAIN if climb_type == 'boss' else self.I_CHECK_MAP
-                self.ui_click(self.I_UI_BACK_YELLOW, stop=stop, interval=2.8)
+                # 不在此处盲点返回: 结算动画未结束时点击无效, 曾卡死导致boss轮永不执行(2026-09-19实锤)
+                # 下一轮循环的ui_goto(page_map)/_run_boss自带导航, 会从当前页面可靠抵达
+                pass
             except LimitTimeOut as e:
                 break
             finally:
@@ -203,7 +203,7 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             if not ocr_limit_timer.reached():
                 continue
             ocr_limit_timer.reset()
-            if not self.ocr_appear(self.O_FIRE):
+            if not self.appear(self.I_FIRE):
                 continue
             #  --------------------------------------------------------------
             self.lock_team(self.conf.general_battle)
@@ -237,7 +237,7 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             if not ocr_limit_timer.reached():
                 continue
             ocr_limit_timer.reset()
-            if not self.ocr_appear(self.O_FIRE):
+            if not self.appear(self.I_FIRE):
                 self.appear_then_click(self.I_CHECK_BATTLE_MAIN, interval=4)
                 continue
             #  --------------------------------------------------------------
@@ -255,10 +255,13 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
     def _run_boss(self):
         """炼石成金首领: 活动主界面左下入口, 点挑战直接开打(x12票), 支持切换御魂+次数限制"""
         logger.hr(f'Start run climb type BOSS')
+        # 上一轮(ap/pass)结束画面可能在虚无精锐准备页/结算画面, 先导航回活动主界面再点入口
+        self.ui_goto(game.page_act_main)
         self.ui_click(self.I_GOTO_GOLD_BOSS, stop=self.I_CHECK_GOLD_BOSS, interval=2)
         self.switch_soul(self.I_BATTLE_MAIN_TO_RECORDS, self.I_CHECK_GOLD_BOSS)
 
         ocr_limit_timer = Timer(1).start()
+        ocr_fail = 0  # boss页OCR连续失败计数(镜像帧判定)
         while 1:
             self.screenshot()
             self.put_status()
@@ -274,15 +277,24 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
             if not ocr_limit_timer.reached():
                 continue
             ocr_limit_timer.reset()
-            if not self.ocr_appear(self.O_BOSS_FIRE):
+            if not self.appear(self.I_BOSS_FIRE):
+                # nemu_ipc在boss界面的游戏surface带额外变换, 原始帧180度倒, OAS仅flip上下后
+                # 剩左右镜像, OCR读倒字(实锤: "挑战"被读成"机战", 2026-09-19)。
+                # 帧镜像不影响ADB点击坐标(屏幕实际显示是正的), 连续失败后改固定坐标点击
+                ocr_fail += 1
+                if ocr_fail == 3:
+                    logger.warning('Boss fire OCR keep failing, probably mirrored nemu frame, fallback to fixed click')
+                if ocr_fail >= 3:
+                    self.click(self.C_BOSS_FIRE, interval=2)
                 continue
+            ocr_fail = 0
             #  --------------------------------------------------------------
             if not self.check_tickets_enough():
                 logger.warning(f'No boss tickets left, wait for next time')
                 break
             if self.conf.general_climb.random_sleep:
                 random_sleep(probability=0.2)
-            if self.start_battle(check_image=self.I_CHECK_GOLD_BOSS, fire=self.O_BOSS_FIRE):
+            if self.start_battle(check_image=self.I_CHECK_GOLD_BOSS, fire=self.I_BOSS_FIRE, wait_strategy='default'):
                 continue
 
         self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_MAIN, interval=4.5)
@@ -408,9 +420,9 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
                 self.click(self.C_MAP_BLANK, interval=1.5)
                 blank_timer.reset()
 
-    def start_battle(self, check_image: RuleImage = None, fire: RuleOcr = None):
+    def start_battle(self, check_image: RuleImage = None, fire: RuleImage = None, wait_strategy: str = 'activity'):
         check_image = check_image if check_image is not None else self.I_CHECK_BATTLE_MAIN
-        fire = fire if fire is not None else self.O_FIRE
+        fire = fire if fire is not None else self.I_FIRE
         click_times, max_times = 0, random.randint(4, 8)
         while 1:
             self.screenshot()
@@ -428,12 +440,19 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
                     self.appear_then_click(self.I_UI_CONFIRM, interval=1) ):
                 continue
             if (self.appear(check_image, interval=1)) \
-                    and self.ocr_appear_click(fire, interval=2):
+                    and self.appear_then_click(fire, interval=2):
                 click_times += 1
                 logger.info(f'Try click fire, remain times[{max_times - click_times}]')
                 continue
         # 运行战斗
-        self.run_general_battle(config=self.get_general_battle_conf())
+        if wait_strategy == 'default':
+            # boss(炼石成金)结算是金色鱼专属画面, 无"获得奖励"横幅(I_UI_REWARD),
+            # activity策略的success/failure钩子全不命中且无盲点/超时兜底, 会永久空转在奖励界面(2026-09-19实锤)
+            # default策略: 鬼火消失->盲点推进->I_REWARD/I_REWARD_GOLD领奖判定, 静态实测boss奖励画面命中0.987/0.992
+            with battle_wait_strategy(success='default'):
+                self.run_general_battle(config=self.get_general_battle_conf())
+        else:
+            self.run_general_battle(config=self.get_general_battle_conf())
 
     @battle_wait_strategy(success='activity')
     def battle_wait(self, *args, **kwargs):
@@ -482,7 +501,7 @@ class ScriptTask(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikiga
         :return: True 可以运行 or False
         """
         logger.hr(f'Check {self.climb_type} tickets')
-        fire = self.O_BOSS_FIRE if self.climb_type == 'boss' else self.O_FIRE
+        fire = self.I_BOSS_FIRE if self.climb_type == 'boss' else self.I_FIRE
         if not self.wait_until_appear(fire, wait_time=3):
             logger.warning(f'Detect fire fail, try reidentify')
             return False

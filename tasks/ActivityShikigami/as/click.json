@@ -52,5 +52,13 @@
     "roiFront": "60,40,100,70",
     "roiBack": "60,40,100,70",
     "description": "地图左上空白区(放弃派遣时点击关闭面板)"
+  },
+  {
+    "itemName": "boss_fire_click",
+    "imageName": "",
+    "roiFront": "1145,580,60,50",
+    "roiBack": "1145,580,60,50",
+    "method": "",
+    "description": "boss页挑战按钮固定点击区(镜像帧兜底)"
   }
 ]
