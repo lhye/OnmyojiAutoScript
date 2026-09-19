@@ -177,7 +177,6 @@ class ScriptTask(
             if self.appear_then_click(self.I_BACK_BOTTOM, interval=1):
                 continue
 
-
     def run_member(self):
         logger.info('Start run member')
         self.ui_get_current_page()

@@ -457,8 +457,6 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
     #             break
     #
     #     return win
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        return self.battle_wait_v2(random_click_swipt_enable=random_click_swipt_enable)
 
 
 if __name__ == '__main__':
