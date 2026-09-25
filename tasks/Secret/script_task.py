@@ -7,7 +7,6 @@ from datetime import datetime
 
 from module.exception import TaskEnd
 from module.logger import logger
-from module.base.timer import Timer
 from module.atom.ocr import RuleOcr
 
 from tasks.GameUi.game_ui import GameUi
@@ -256,30 +255,6 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
                 break
             if self.appear_then_click(self.I_SE_FIRE, interval=1):
                 continue
-
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        # 重写
-        self.device.stuck_record_add('BATTLE_STATUS_S')
-        self.device.click_record_clear()
-        # 战斗过程 随机点击和滑动 防封
-        logger.info("Start battle process")
-        while 1:
-            self.screenshot()
-            if self.appear(self.I_SE_BATTLE_WIN):
-                logger.info('Win battle')
-                self.ui_click_until_disappear(self.I_SE_BATTLE_WIN, interval=2)
-                return True
-            if self.appear_then_click(self.I_WIN, interval=1):
-                continue
-            if self.appear(self.I_REWARD):
-                logger.info('Win battle')
-                self.ui_click_until_disappear(self.I_REWARD)
-                return True
-
-            if self.appear(self.I_FALSE):
-                logger.warning('False battle')
-                self.ui_click_until_disappear(self.I_FALSE)
-                return False
 
     def check_time(self) -> None:
         """

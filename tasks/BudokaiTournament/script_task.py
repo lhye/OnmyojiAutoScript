@@ -44,7 +44,6 @@ class LimitCountOut(Exception):
 
 class StateMachine(BaseTask):
     run_idx: int = 0  # 当前爬塔类型
-    _count_map = None
 
     @cached_property
     def conf(self) -> BudokaiTournament:
@@ -56,22 +55,15 @@ class StateMachine(BaseTask):
             return self.conf.run_sequence()[-1]
         return self.conf.run_sequence()[self.run_idx]
 
-    @property
-    def count_map(self) -> dict[str, int]:
-        """
-        :return: key: climb type, value: run count
-        """
-        if not getattr(self, "_count_map", None):
-            self._count_map = {climb_type: 0 for climb_type in self.conf.run_sequence()}
-        return self._count_map
-
     # ----------------------------------------------------
     def put_status(self):
         """
         更新全局状态
         """
         def get_count(self) -> int:
-            return self.count_map[self.climb_type]
+            # current_count由run_general_battle每次战斗自增, switch_next切换类型时归零
+            # (原count_map仅在battle_wait里同步, 该重写已删除)
+            return self.current_count
 
         def get_limit(self) -> int:
             limit = getattr(self.conf.daily_training, f'limit_{self.climb_type}', 0)
@@ -134,55 +126,9 @@ class Foot(StateMachine, GameUi, BaseActivity, SwitchSoul, ActivityShikigamiAsse
         # 运行战斗
         return self.run_general_battle(config=self.get_general_battle_conf())
 
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        func = getattr(self, f'battle_wait_daily_training', self.battle_wait_daily_training)
-        return func(random_click_swipt_enable)
-
-    def battle_wait_daily_training(self, random_click_swipt_enable: bool):
-        self.C_REWARD_1.name, self.C_REWARD_2.name, self.C_REWARD_3.name = 'C_REWARD', 'C_REWARD', 'C_REWARD'
-        self.device.stuck_record_add('BATTLE_STATUS_S')
-        self.device.click_record_clear()
-        logger.info(f"Start {self.climb_type} battle process")
-        if self.climb_type ==  'daily_training':
-            self.count_map[self.climb_type] = self.current_count
-            super_long_timer = None
-        else:
-            super_long_timer = Timer(270).start()
-            super_long_cnt = 0
-
-        while 1:
-            self.screenshot()
-
-            # 出现赢的鼓，点击直到消失
-            if self.appear_then_click(self.I_WIN, interval=1.8):
-                self.ui_click_until_disappear(self.I_DE_WIN, interval=1.5)
-                return True
-            if self.appear(self.I_FALSE, threshold=0.8):
-                logger.warning('False battle')
-                self.ui_click_until_disappear(self.I_FALSE)
-                return False
-            if self.ui_reward_appear_click():
-                continue
-            if super_long_timer and super_long_timer.reached_and_reset():
-                if super_long_cnt >= 3:
-                    raise GameStuckError
-                self.click(self.C_RANDOM_CLICK, interval=10)
-                self.device.stuck_record_add('BATTLE_STATUS_S')
-                logger.info(f"Start click in battle process for 270s")
-                super_long_cnt += 1
-            # 随机滑动
-            if random_click_swipt_enable:
-                self.random_click_swipt()
-        return False
-
-    def battle_wait_cultivation_drills(self, random_click_swipt_enable: bool):
-        self.C_REWARD_1.name, self.C_REWARD_2.name, self.C_REWARD_3.name = 'C_REWARD', 'C_REWARD', 'C_REWARD'
-        self.device.stuck_record_add('BATTLE_STATUS_S')
-        self.device.click_record_clear()
-        logger.info(f"Start {self.climb_type} battle process")
-        while 1:
-            self.screenshot()
-
+    # 旧版battle_wait重写已删除(收编走GeneralBattle通用实现):
+    # battle_wait_daily_training依赖I_WIN/I_DE_WIN模板, 部分结算画面匹配不上会空转卡死;
+    # battle_wait_cultivation_drills本身就是缺判定的死循环残缺代码(2026-09-25清理)
 
     def get_general_battle_conf(self) -> tasks.Component.GeneralBattle.config_general_battle.GeneralBattleConfig:
         from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig as gbc

@@ -7,7 +7,6 @@ from cached_property import cached_property
 
 from module.exception import TaskEnd
 from module.logger import logger
-from module.base.timer import Timer
 
 from tasks.GameUi.game_ui import GameUi
 from tasks.GameUi.page import page_main, page_hunt, page_shikigami_records, page_guild
@@ -223,40 +222,6 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
             return False
 
 
-
-
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        """
-        重写 三轮战斗 战斗过程中点击准备 返回到寮信息界面
-        :param random_click_swipt_enable:
-        :return:
-        """
-        self.device.stuck_record_add('BATTLE_STATUS_S')
-        self.device.click_record_clear()
-        # 战斗过程 随机点击和滑动 防封 并点击 准备
-        logger.info("Start battle process")
-        stuck_timer = Timer(180)
-        stuck_timer.start()
-        while 1:
-            self.screenshot()
-            if self.appear(self.I_WIN):
-                logger.info('Battle win')
-                self.ui_click_until_disappear(self.I_WIN)
-                return True
-            # 战斗过程中出现准备
-            if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1.5):
-                self.device.stuck_record_clear()
-                self.device.stuck_record_add('BATTLE_STATUS_S')
-            # 如果出现失败 就点击，返回False
-            if self.appear(self.I_FALSE, threshold=0.8):
-                logger.info("Battle result is false")
-                self.ui_click_until_disappear(self.I_FALSE)
-                return False
-            # 如果三分钟还没打完，再延长五分钟
-            if stuck_timer and stuck_timer.reached():
-                stuck_timer = None
-                self.device.stuck_record_clear()
-                self.device.stuck_record_add('BATTLE_STATUS_S')
 
 
     def goto_main(self):

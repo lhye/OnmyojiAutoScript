@@ -79,30 +79,6 @@ class ScriptTask(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, SwitchSoul, 
         # 退出 (要么是在组队界面要么是在庭院)
         self.experience_exit(con)
 
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        # 重写
-        self.device.stuck_record_add('BATTLE_STATUS_S')
-        self.device.click_record_clear()
-        # 战斗过程 随机点击和滑动 防封
-        logger.info("Start battle process")
-        while 1:
-            self.screenshot()
-            if self.appear_then_click(self.I_PREPARE_HIGHLIGHT,interval=1):
-                logger.info('click prepare')
-            if self.appear(self.I_DE_WIN):
-                logger.info('Win battle')
-                self.ui_click_until_disappear(self.I_DE_WIN)
-                return True
-            if self.appear(self.I_EXP_WIN):
-                logger.info('Win battle')
-                self.ui_click_until_disappear(self.I_EXP_WIN)
-                return True
-
-            if self.appear(self.I_FALSE):
-                logger.warning('False battle')
-                self.ui_click_until_disappear(self.I_FALSE)
-                return False
-
     def experience_exit(self, con):
         self.ui_get_current_page()
         self.ui_goto(page_main)

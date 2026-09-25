@@ -86,39 +86,6 @@ class ScriptTask(GameUi, GeneralBattle, HeroTestAssets, SwitchSoul):
         self.success = False  # 进入失败且不知道发生了什么情况
         return False
 
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        self.device.stuck_record_add("BATTLE_STATUS_S")
-        self.device.click_record_clear()
-        logger.info("Start battle process")
-        win = None
-        # 处理不同模式下的结算界面
-        mode_wait_dict: dict[Layer, Callable] = {
-            Layer.MIJING: self.hero1_skill_wait,
-            Layer.MENGXU: self.hero2_skill_wait,
-        }
-        while True:
-            self.screenshot()
-            if win is not None and self.appear(self.O_FIRE, interval=1.5):
-                break
-            if mode_wait_dict.get(self.conf.herotest.layer, None) is not None and \
-                    mode_wait_dict[self.conf.herotest.layer]():
-                win = True
-                continue
-            if self.appear(self.I_WIN, interval=1.2) or \
-                    self.appear(self.I_DE_WIN, interval=1.2) or \
-                    self.appear(self.I_REWARD, interval=1.2):
-                win = True
-                self.click(pages.random_click(ltrb=(False, True, True, False)))
-                continue
-            if self.appear(self.I_FALSE, interval=1.5):
-                win = False
-                self.click(pages.random_click(ltrb=(False, True, True, False)))
-                continue
-            if win is None and random_click_swipt_enable:
-                self.random_click_swipt()
-        logger.info(f'Battle win = {win}')
-        return win
-
     def hero1_skill_wait(self):
         if self.wait_until_appear(self.I_BCMJ_SKILL_ADD_CONFIRM, wait_time=2):
             timer = Timer(10).start()
