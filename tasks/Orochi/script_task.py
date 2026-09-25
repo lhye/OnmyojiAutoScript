@@ -165,15 +165,19 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             self.screenshot()
             # 次数/时间上限必须在check_and_invite之前判断:
             # 开战返回True会continue跳过后面的判断, count虚涨永不结束(2026-09-19实锤count到11还在跑)
-            if self.current_count >= self.limit_count:
+            # Battle done后结算->房间过渡期约1秒内is_in_room()为False, 若继续往下会再开一局(2026-09-25实锤count到12)
+            # 故上限命中但不在房间时不得走开战逻辑, 只处理弹窗并空转等待回房
+            if self.current_count >= self.limit_count or datetime.now() - self.start_time >= self.limit_time:
                 if self.is_in_room():
-                    logger.info('Orochi count limit out')
+                    logger.info('Orochi count or time limit out')
                     break
-
-            if datetime.now() - self.start_time >= self.limit_time:
-                if self.is_in_room():
-                    logger.info('Orochi time limit out')
+                if self.is_room_dead():
+                    logger.warning('Orochi task failed')
+                    success = False
                     break
+                if self.check_and_invite(self.config.orochi.invite_config.default_invite):
+                    continue
+                continue
 
             # 无论胜利与否, 都会出现是否邀请一次队友
             # 区别在于，失败的话不会出现那个勾选默认邀请的框
@@ -360,16 +364,18 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
         success = True
         while 1:
             self.screenshot()
-            # 次数/时间上限必须在check_and_invite之前判断, 原因同run_leader
-            if self.current_count >= self.limit_count:
+            # 次数/时间上限必须在check_and_invite之前判断, 原因同run_leader(结算过渡期is_in_room为False需空转等待)
+            if self.current_count >= self.limit_count or datetime.now() - self.start_time >= self.limit_time:
                 if self.is_in_room():
-                    logger.info('Orochi count limit out')
+                    logger.info('Orochi count or time limit out')
                     break
-
-            if datetime.now() - self.start_time >= self.limit_time:
-                if self.is_in_room():
-                    logger.info('Orochi time limit out')
+                if self.is_room_dead():
+                    logger.warning('Orochi task failed')
+                    success = False
                     break
+                if self.check_and_invite(self.config.orochi.invite_config.default_invite):
+                    continue
+                continue
 
             # 无论胜利与否, 都会出现是否邀请一次队友
             # 区别在于，失败的话不会出现那个勾选默认邀请的框
