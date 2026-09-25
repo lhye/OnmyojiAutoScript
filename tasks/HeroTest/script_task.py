@@ -67,6 +67,10 @@ class ScriptTask(GameUi, GeneralBattle, HeroTestAssets, SwitchSoul):
         click_cnt, max_click = 0, random.randint(3, 4)
         while True:
             self.screenshot()
+            if self.is_in_prepare(False):
+                # 通用准备界面(大鼓)已出现, 交给 run_general_battle/battle_before 接管
+                # (原逻辑等到 is_in_battle 开场才返回, 期间挑战按钮OCR对准备按钮误读"住备"空转烧CPU)
+                return True
             if self.is_in_battle(False):
                 return True  # 成功进入战斗
             if click_cnt >= max_click:  # 异常情况,怎么都无法进入
@@ -78,7 +82,7 @@ class ScriptTask(GameUi, GeneralBattle, HeroTestAssets, SwitchSoul):
             if self.appear(self.I_REAL_MONEY, interval=1):  # 这里因为门票不够而不是其他异常所以success默认还是true
                 logger.warning('Ticket is not enough')
                 return False
-            if self.appear_then_click(self.O_FIRE, interval=1.2):  # 挑战按钮
+            if self.appear_then_click(self.I_FIRE, interval=1.2):  # 挑战按钮(图片匹配)
                 self.device.stuck_record_clear()
                 click_cnt += 1
                 continue

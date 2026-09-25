@@ -108,7 +108,7 @@ class HeroTestAssets:
 	O_ART_WAR_CARD = RuleOcr(roi=(712,21,98,36), area=(712,21,98,36), mode="DigitCounter", method="Default", keyword="", name="art_war_card")
 	# 兵道帖机密 
 	O_ART_WAR_CARD_PLUS = RuleOcr(roi=(916,25,90,29), area=(916,25,90,29), mode="Digit", method="Default", keyword="", name="art_war_card_plus")
-	# 挑战按钮 
-	O_FIRE = RuleOcr(roi=(1130,585,92,55), area=(1126,576,100,99), mode="Single", method="Default", keyword="挑战", name="fire")
+	# 挑战按钮(图片匹配替代OCR: 准备界面会误读出"住备"空转烧CPU; 菱形按钮+x3次数徽章, 模板只裁"挑战"文字避开徽章)
+	I_FIRE = RuleImage(roi_front=(1105,582,112,55), roi_back=(1090,550,180,130), method="Template matching", threshold=0.8, file="./tasks/HeroTest/as/as_fire_hero.png")
 
 
