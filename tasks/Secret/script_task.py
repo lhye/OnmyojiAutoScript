@@ -101,7 +101,8 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
                 if buff is []:
                     buff = None
                 self.click_battle()
-                success = self.run_general_battle(self.battle_config, buff=buff)
+                # 同下: 不接返回值, 20s超时False≠失败, 且会覆盖进门检查的success标志
+                self.run_general_battle(self.battle_config, buff=buff)
                 continue
             if not first_battle and layer == 6:
                 # 第六次关闭加成，但是发现没有这个接口。。。！！！居然没有注意到
@@ -113,20 +114,23 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
                 if buff is []:
                     buff = None
                 self.click_battle()
-                success = self.run_general_battle(self.battle_config, buff=buff)
+                # 不接返回值: 秘闻结算推进完回到地图后无领奖画面无鬼火, wait_result只能20s超时返回False
+                # (盲点已推完结算,超时False≠失败); 且success变量是进门检查标志, 被覆盖会导致误结束任务
+                # 循环自愈: find_battle每轮找当前层, 输赢无所谓
+                self.run_general_battle(self.battle_config, buff=buff)
                 continue
             elif not first_battle and layer == 9 and con.layer_9:
                 self.click_battle()
-                success = self.run_general_battle(self.battle_config)
+                self.run_general_battle(self.battle_config)
                 continue
             elif not first_battle and layer == 10 and con.layer_10:
                 self.click_battle()
-                success = self.run_general_battle(self.battle_config)
+                self.run_general_battle(self.battle_config)
                 break
             elif not first_battle:
                 # 其他层
                 self.click_battle()
-                success = self.run_general_battle(self.battle_config)
+                self.run_general_battle(self.battle_config)
                 continue
 
         self.ui_click(self.I_UI_BACK_BLUE, self.I_UI_BACK_YELLOW)
@@ -255,6 +259,11 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
                 break
             if self.appear_then_click(self.I_SE_FIRE, interval=1):
                 continue
+
+    def _battle_finish_check(self) -> bool:
+        # 秘闻结算推完回到秘闻地图后无领奖画面无鬼火, 挑战按钮重现即本层流程结束
+        # (重写通用钩子, 避免空等20s超时)
+        return self.appear(self.I_SE_FIRE)
 
     def check_time(self) -> None:
         """

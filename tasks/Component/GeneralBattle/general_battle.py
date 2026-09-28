@@ -496,11 +496,18 @@ class GeneralBattle(BattleWait, GeneralBuff):
         """战斗进行中(鬼火计数可见), 战斗结束的标志是鬼火消失"""
         return self.appear(self.I_BATTLE_EMBER)
 
+    def _battle_finish_check(self) -> bool:
+        """战斗收尾完成检查钩子(wait_result循环内每帧调用), 默认关闭。
+        个别任务结算推完后回专属地图(无领奖画面无鬼火, 只能空等20s超时),
+        重写本方法识别地图标志提前结束等待, 如Secret的挑战按钮重现"""
+        return False
+
     def _universal_wait_result(self):
         """战斗结束(鬼火消失)后的胜负判定:
         - 领奖画面出现(公共资产, 各主题一致) -> 胜利
         - 回到准备界面 / 超时 -> 失败
         - 鬼火重新出现(多轮战斗下一轮) -> 战斗继续
+        - 任务自定义收尾标志命中(重写_battle_finish_check) -> 结束
         期间限时盲点结算banner区域加速推进
         :return: True=胜利, False=失败, None=战斗继续
         """
@@ -520,6 +527,9 @@ class GeneralBattle(BattleWait, GeneralBuff):
             # 不判胜负(2026-09-19用户拍板): 判负依赖的画面资产在魂海结算链路误命中
             # (is_in_prepare全家桶和大鼓模板均中招), 且调用方普遍不关心win值。
             # 失败场景(回房间无奖励画面)由超时兜底返回, 此时画面已可操作
+            if self._battle_finish_check():
+                logger.info('Battle finish check hit, task page arrived')
+                return True
             if timer.reached():
                 logger.warning('Universal battle result timeout, treat as false')
                 return False

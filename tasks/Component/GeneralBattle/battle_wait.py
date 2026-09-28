@@ -626,7 +626,8 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             for handler in handlers:
                 result = handler(bw_ctx)
                 if handler.__name__.startswith('_bw_completion') and result == HookSignal.DONE:
-                    return True
+                    # 返回真实胜负: 恒True会让RealmRaid失败刷新/WantedQuests等接返回值的失败分支全部失效
+                    return bw_ctx.success
                 if result == HookSignal.CONTINUE:
                     continue
 
