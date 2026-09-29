@@ -258,6 +258,7 @@ class GeneralBattle(BattleWait, GeneralBuff):
             if appear_ghost or appear_reward or appear_gold:
                 logger.info('Win battle')
                 timer = Timer(20).start()
+                confirm_count = 0
                 while 1:
                     self.screenshot()
 
@@ -268,8 +269,21 @@ class GeneralBattle(BattleWait, GeneralBuff):
                     )
                     # logger.info(f'_appear_ghost: {_appear_ghost} _appear_reward: {_appear_reward} _appear_gold: {_appear_gold}')
                     if any([_appear_ghost, _appear_reward, _appear_gold]):
+                        confirm_count = 0
                         action_click = random.choice([self.C_REWARD_1, self.C_REWARD_2, self.C_REWARD_3])
                         self.click(action_click, interval=1.5)
+                    elif self._battle_finish_check():
+                        # 任务侧"认识界面"命中(御魂回房间/秘闻回地图等): 结算彻底结束
+                        logger.info('Battle done at finish check')
+                        return True
+                    elif confirm_count < 3:
+                        # 三资产消失≠结算结束: 御魂组队领奖后还有战利品锦囊等"点击屏幕继续"过渡画面
+                        # (I_REWARD/GHOST/GOLD全不命中), 继续盲点点掉过渡画面;
+                        # 队员首次回庭院无房间标志, 连续3轮(约4.5s)无资产兜底结束(庭院空白点击无害)
+                        confirm_count += 1
+                        action_click = random.choice([self.C_REWARD_1, self.C_REWARD_2, self.C_REWARD_3])
+                        self.click(action_click, interval=1.5)
+                        continue
                     else:
                         logger.info('Battle done')
                         return True
@@ -514,8 +528,8 @@ class GeneralBattle(BattleWait, GeneralBuff):
         logger.info('Universal battle ended, waiting for result')
         # 魂海完整结算推进(banner→战利品→奖励画面)实测13s+, 原12s贴线误判, 放宽到20s
         timer = Timer(20).start()
-        # 盲点只服务banner推进: banner至多1~2次点击即消失, 每轮结果等待至多点3次,
-        # 点完纯等领奖画面/鬼火重现/超时, 不按时间窗口持续轰炸
+        # 鬼火消失后持续盲点直至跳转到认识界面(领奖画面/鬼火重现/finish_check), 2026-09-29用户拍板
+        # 上限12次防风控: 15条记录内单按钮>=6次触发, 三点位随机分摊12次每点位期望4次
         click_count = 0
         throttle_timer = Timer(1.5).start()
         while 1:
@@ -533,8 +547,7 @@ class GeneralBattle(BattleWait, GeneralBuff):
             if timer.reached():
                 logger.warning('Universal battle result timeout, treat as false')
                 return False
-            # 盲点banner区域, 3次封顶
-            if click_count < 3 and throttle_timer.reached():
+            if click_count < 12 and throttle_timer.reached():
                 self.click(random.choice([self.C_WIN_1, self.C_WIN_2, self.C_WIN_3]))
                 click_count += 1
                 throttle_timer.reset()

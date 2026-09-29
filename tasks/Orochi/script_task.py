@@ -83,6 +83,14 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
 
         raise TaskEnd
 
+    def _battle_finish_check(self) -> bool:
+        # 领奖收尾的"认识界面"判定: 后续每局打完回准备房间, is_in_room(表情/发言按钮)精确识别;
+        # 首次打完回庭院, 用page_main.check_button(庭院标志, 与ui_get_current_page同源)判定,
+        # 庭院是结算终点不得再盲点(庭院空白乱点有害)
+        if self.is_in_room(is_screenshot=False):
+            return True
+        return self.appear(page_main.check_button)
+
     def orochi_enter(self) -> bool:
         logger.info('Enter orochi')
         while True:
