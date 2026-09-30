@@ -28,8 +28,8 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
         while 1:
             self.screenshot()
 
-            # 已经下注
-            if self.appear(self.I_BETTED):
+            # 已经下注(已竞猜鼓在押注的一侧, 左右各一模板)
+            if self.appear(self.I_BETTED) or self.appear(self.I_BETTED_LEFT):
                 logger.info('You have betted')
                 break
             # 休息中
@@ -128,7 +128,7 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
         logger.info('Formal bet')
         while 1:
             self.screenshot()
-            if self.appear(self.I_BETTED):
+            if self.appear(self.I_BETTED) or self.appear(self.I_BETTED_LEFT):
                 break
             if self.appear_then_click(self.I_BET_SURE, interval=2) and flag_glod_30 == 1:
                 continue
