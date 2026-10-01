@@ -16,10 +16,14 @@ class FrogBossAssets:
 	I_BET_RIGHT = RuleImage(roi_front=(1095,310,125,90), roi_back=(1045,275,220,160), threshold=0.8, method="Template matching", file="./tasks/FrogBoss/fb/fb_bet_right.png")
 	# description 
 	I_BET_SUCCESS_BOX = RuleImage(roi_front=(700,418,115,80), roi_back=(640,380,260,170), threshold=0.75, method="Template matching", file="./tasks/FrogBoss/fb/fb_bet_success_box.png")
-	# 左边赢了 
-	I_SUCCESS_LEFT = RuleImage(roi_front=(123,316,100,100), roi_back=(91,254,202,221), threshold=0.8, method="Template matching", file="./tasks/FrogBoss/fb/fb_success_left.png")
-	# 右边输了 
-	I_FAILURE_RIGHT = RuleImage(roi_front=(1063,291,100,100), roi_back=(993,242,224,199), threshold=0.8, method="Template matching", file="./tasks/FrogBoss/fb/fb_failure_right.png")
+	# 胜败鼓字: 红胜=左鼓写胜, 蓝胜=右鼓写胜(2026-10-01实拍验证), detect()以此判胜负方
+	I_SUCCESS_LEFT = RuleImage(roi_front=(280,300,98,120), roi_back=(150,270,580,170), threshold=0.75, method="Template matching", file="./tasks/FrogBoss/fb/fb_success_left.png")
+	# 右边输了
+	I_FAILURE_RIGHT = RuleImage(roi_front=(1105,305,93,113), roi_back=(700,270,580,170), threshold=0.75, method="Template matching", file="./tasks/FrogBoss/fb/fb_failure_right.png")
+	# 右边赢了
+	I_SUCCESS_RIGHT = RuleImage(roi_front=(1095,300,98,120), roi_back=(700,270,580,170), threshold=0.75, method="Template matching", file="./tasks/FrogBoss/fb/fb_success_right.png")
+	# 左边输了
+	I_FAILURE_LEFT = RuleImage(roi_front=(285,305,93,112), roi_back=(150,270,580,170), threshold=0.75, method="Template matching", file="./tasks/FrogBoss/fb/fb_failure_left.png")
 	# description 
 	I_NEXT_COMPETITION = RuleImage(roi_front=(764,484,64,64), roi_back=(700,450,190,140), threshold=0.8, method="Template matching", file="./tasks/FrogBoss/fb/fb_next_competition.png")
 	# 30万金币 
@@ -32,10 +36,6 @@ class FrogBossAssets:
 	I_BETTED = RuleImage(roi_front=(1118,322,128,50), roi_back=(700,270,580,170), threshold=0.75, method="Template matching", file="./tasks/FrogBoss/fb/fb_betted.png")
 	# 已竞猜鼓出现在押注的一侧(押左在左/押右在右), 左右各一张模板; 0.75容忍跨帧光照, 负向仅0.33
 	I_BETTED_LEFT = RuleImage(roi_front=(262,307,150,52), roi_back=(150,270,580,170), threshold=0.75, method="Template matching", file="./tasks/FrogBoss/fb/fb_betted_left.png")
-	# description 
-	I_SUCCESS_RIGHT = RuleImage(roi_front=(1048,341,122,116), roi_back=(999,243,201,260), threshold=0.8, method="Template matching", file="./tasks/FrogBoss/fb/fb_success_right.png")
-	# description 
-	I_FAILURE_LEFT = RuleImage(roi_front=(116,307,100,100), roi_back=(76,256,193,219), threshold=0.8, method="Template matching", file="./tasks/FrogBoss/fb/fb_failure_left.png")
 	# description 
 	I_BET_FAILURE = RuleImage(roi_front=(612,258,270,68), roi_back=(540,220,400,160), threshold=0.8, method="Template matching", file="./tasks/FrogBoss/fb/fb_bet_failure.png")
 	# description 

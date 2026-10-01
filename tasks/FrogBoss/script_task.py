@@ -39,7 +39,7 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
             # 竞猜成功
             if self.appear(self.I_BET_SUCCESS):
                 logger.info('You bet win')
-                self.detect()
+                self._record_result(win=True)
                 while 1:
                     self.screenshot()
                     if self.appear(self.I_BET_LEFT) and self.appear(self.I_BET_RIGHT):
@@ -54,8 +54,8 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
             # 竞猜失败
             if self.appear(self.I_BET_FAILURE):
                 logger.info('You bet lose')
+                self._record_result(win=False)
                 self.ui_click_until_disappear(self.I_NEXT_COMPETITION)
-                self.detect()
                 continue
             # 正式竞猜
             if self.appear(self.I_BET_LEFT) and self.appear(self.I_BET_RIGHT):
@@ -109,6 +109,10 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
                 click_image = self.I_BET_LEFT
             case Strategy.AlwaysBlue:
                 click_image = self.I_BET_RIGHT
+            case Strategy.Follow:
+                # 跟随上局胜方, 空值默认投红
+                last = self.config.model.frog_boss.frog_boss_config.last_winner
+                click_image = self.I_BET_LEFT if last != 'right' else self.I_BET_RIGHT
             case _:
                 raise ValueError(f'Unknown bet mode: {self.config.model.frog_boss.frog_boss_config.strategy_frog}')
         logger.info(f'You strategy is {self.config.model.frog_boss.frog_boss_config.strategy_frog} and bet on {click_image}')
@@ -129,6 +133,9 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
         while 1:
             self.screenshot()
             if self.appear(self.I_BETTED) or self.appear(self.I_BETTED_LEFT):
+                # 下注成功, 记录投注边供开奖推导校验
+                self.config.model.frog_boss.frog_boss_config.last_bet_side = \
+                    'left' if click_image == self.I_BET_LEFT else 'right'
                 break
             if self.appear_then_click(self.I_BET_SURE, interval=2) and flag_glod_30 == 1:
                 continue
@@ -140,20 +147,38 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
             if self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=2):
                 continue
 
-    def detect(self) -> bool:
+    def detect(self):
         """
-        检测是左边赢了还是右边赢的
-        :return: True 左边赢了
+        检测开奖画面是左边赢了还是右边赢的（红胜=左鼓写胜, 蓝胜=右鼓写胜）
+        :return: True 左边赢 / False 右边赢 / None 未识别
         """
         if self.appear(self.I_SUCCESS_LEFT) and self.appear(self.I_FAILURE_RIGHT):
-            result = True
             logger.info('Left win')
+            return True
         elif self.appear(self.I_SUCCESS_RIGHT) and self.appear(self.I_FAILURE_LEFT):
-            result = False
             logger.info('Right win')
+            return False
+        return None
+
+    def _record_result(self, win: bool):
+        """
+        记录上局胜利方, Follow策略使用。
+        鼓字识别优先, 横幅推导(上局投注边+输赢)校验, 矛盾时信任鼓字。
+        """
+        cfg = self.config.model.frog_boss.frog_boss_config
+        drum = self.detect()
+        side = cfg.last_bet_side
+        banner = ''
+        if side in ('left', 'right'):
+            banner = side if win else ('right' if side == 'left' else 'left')
+        if drum is not None and banner and drum != banner:
+            logger.warning(f'Drum result {drum} conflicts with banner result {banner}, trust drum')
+        final = drum if drum is not None else banner
+        if final:
+            cfg.last_winner = final
+            logger.info(f'Last winner: {final}')
         else:
-            result = True
-        return result
+            logger.warning('No winner detected, keep last_winner unchanged')
 
     def get_bilibili(self) -> RuleImage:
         """
