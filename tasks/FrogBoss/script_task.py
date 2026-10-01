@@ -136,6 +136,7 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
                 # 下注成功, 记录投注边供开奖推导校验
                 self.config.model.frog_boss.frog_boss_config.last_bet_side = \
                     'left' if click_image == self.I_BET_LEFT else 'right'
+                self.config.save()
                 break
             if self.appear_then_click(self.I_BET_SURE, interval=2) and flag_glod_30 == 1:
                 continue
@@ -176,6 +177,7 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
         final = drum if drum is not None else banner
         if final:
             cfg.last_winner = final
+            self.config.save()
             logger.info(f'Last winner: {final}')
         else:
             logger.warning('No winner detected, keep last_winner unchanged')
