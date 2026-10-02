@@ -189,10 +189,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                     logger.info("start Master_first")
                     self.click(self.I_RYOU_DOKAN_START_CHALLENGE, interval=2)
                     continue
-                # 放弃突破
-                if cfg.dokan_config.try_start_dokan:
-                    # 有权限且当前道馆突破 不再打馆主,直接放弃突破
-                    self.abandoned_toppa()
+                # 不再打馆主(次数用完或配置0阵), 无条件放弃突破, 防止无操作空转GameStuck(2026-10-02 error/1790945049754)
+                self.abandoned_toppa()
                 continue
             # 场景状态：检查右下角有没有挑战？通常是失败了，并退出来到集结界面，可重新开始点击右下角挑战进入战斗
             if current_scene == DokanScene.RYOU_DOKAN_SCENE_START_CHALLENGE:
