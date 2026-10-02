@@ -151,14 +151,14 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
     def detect(self):
         """
         检测开奖画面是左边赢了还是右边赢的（红胜=左鼓写胜, 蓝胜=右鼓写胜）
-        :return: True 左边赢 / False 右边赢 / None 未识别
+        :return: 'left' 左边赢 / 'right' 右边赢 / None 未识别
         """
         if self.appear(self.I_SUCCESS_LEFT) and self.appear(self.I_FAILURE_RIGHT):
             logger.info('Left win')
-            return True
+            return 'left'
         elif self.appear(self.I_SUCCESS_RIGHT) and self.appear(self.I_FAILURE_LEFT):
             logger.info('Right win')
-            return False
+            return 'right'
         return None
 
     def _record_result(self, win: bool):
@@ -172,9 +172,9 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
         banner = ''
         if side in ('left', 'right'):
             banner = side if win else ('right' if side == 'left' else 'left')
-        if drum is not None and banner and drum != banner:
+        if drum and banner and drum != banner:
             logger.warning(f'Drum result {drum} conflicts with banner result {banner}, trust drum')
-        final = drum if drum is not None else banner
+        final = drum or banner
         if final:
             cfg.last_winner = final
             self.config.save()
