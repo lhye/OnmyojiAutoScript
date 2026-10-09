@@ -2,6 +2,7 @@
 # @author runhey
 # github https://github.com/runhey
 from time import sleep
+import random
 import numpy as np
 
 from enum import Enum
@@ -13,6 +14,7 @@ from tasks.base_task import BaseTask
 from tasks.Component.GeneralInvite.assets import GeneralInviteAssets
 from tasks.Component.GeneralInvite.config_invite import InviteConfig, InviteNumber, FindMode
 from tasks.Component.GeneralBattle.assets import GeneralBattleAssets
+from tasks.GameUi.page import page_main
 from module.logger import logger
 
 
@@ -576,14 +578,23 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
         if not self.appear(self.I_I_ACCEPT):
             return False
         logger.info('Click accept')
+        # 接受后可能被队长秒开拉进战斗, 且队长单人速刷时战斗可能随即结束: 队员停在领奖/锦囊画面,
+        # is_in_room/I_EXIT/邀请弹窗全不命中导致本循环空转至GameStuck(2026-10-09实锤, error/1791496956646)
+        # 处理: 领奖画面直接点掉; 锦囊等无资产过渡画面有限盲点; 回庭院即停; 90s兜底超时
+        timer = Timer(90).start()
+        timer_click = Timer(1.5).start()
+        confirm_count = 0
         while 1:
             self.screenshot()
+            # 循环仍在正常推进(截图/识别), 清除stuck记录防止外层长等待误报GameStuck
+            self.device.stuck_record_clear()
             if self.is_in_room():
                 return True
-            # 被秒开
-            # https://github.com/runhey/OnmyojiAutoScript/issues/230
+            # 被秒开拉进战斗(战斗中): 交回外层check_take_over_battle接管
             if self.appear(GeneralBattleAssets.I_EXIT):
+                logger.info('Pulled into battle after accept')
                 return False
+            # 邀请弹窗按钮最优先: 队员在庭院收到邀请, 庭院判定不得先于弹窗点击(2026-10-09实锤回归)
             if self.appear_then_click(self.I_I_NO_DEFAULT, interval=1):
                 continue
             if self.appear_then_click(self.I_GI_SURE, interval=1):
@@ -592,6 +603,27 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
                 continue
             if self.appear_then_click(self.I_I_ACCEPT, interval=1):
                 continue
+            # 回到庭院且无邀请弹窗: 房间已不存在, 交回外层等待邀请(庭院是结算终点不得盲点)
+            if self.appear(page_main.check_button):
+                logger.info('Back to page main after accept')
+                return False
+            # 领奖画面: 点掉直至回房间或庭院(外层run_general_battle对已结束的战斗只会空转, 不处理领奖)
+            if self.appear(GeneralBattleAssets.I_GREED_GHOST) or self.appear(GeneralBattleAssets.I_REWARD) \
+                    or self.appear(GeneralBattleAssets.I_REWARD_GOLD):
+                self.click(random.choice([GeneralBattleAssets.C_REWARD_1, GeneralBattleAssets.C_REWARD_2,
+                                          GeneralBattleAssets.C_REWARD_3]), interval=1.5)
+                confirm_count = 0
+                continue
+            # 战利品锦囊等"点击屏幕继续"过渡画面无固定资产: 有限盲点推进(同battle_wait兜底策略)
+            if confirm_count < 3 and timer_click.reached():
+                confirm_count += 1
+                timer_click.reset()
+                self.click(random.choice([GeneralBattleAssets.C_REWARD_1, GeneralBattleAssets.C_REWARD_2,
+                                          GeneralBattleAssets.C_REWARD_3]), interval=1.5)
+                continue
+            if timer.reached():
+                logger.warning('Accept invite wait timeout')
+                return False
         return True
 
     def wait_battle(self, wait_time: time) -> bool:

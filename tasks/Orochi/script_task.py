@@ -16,6 +16,7 @@ from tasks.Orochi.assets import OrochiAssets
 from tasks.Orochi.config import Orochi, UserStatus, Layer
 from tasks.TrueOrochi.assets import TrueOrochiAssets
 from module.logger import logger
+from module.base.timer import Timer
 from module.exception import TaskEnd
 
 
@@ -248,10 +249,18 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
         # self.orochi_enter()
         # self.check_lock(self.config.orochi.general_battle_config.lock_team_enable)
 
+        success = True
+        # 等待邀请的有限等待: 超时优雅退出, 不依赖GameStuck止损
+        # (2026-10-09实锤: 队长已退房, 队员在庭院干等到BATTLE_STATUS_S长超时, 连续3次卡死)
+        wait_time = self.config.orochi.invite_config.wait_time
+        invite_timer = Timer(wait_time.minute * 60 + wait_time.second).start()
+
         # 进入战斗流程
         self.device.stuck_record_add('BATTLE_STATUS_S')
         while 1:
             self.screenshot()
+            # 等待邀请阶段无点击动作, 主动清stuck防止误报GameStuck(战斗卡死由接管路径自行管理)
+            self.device.stuck_record_clear()
 
             # 检查猫咪奖励
             if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
@@ -265,17 +274,27 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                 break
 
             if self.check_then_accept():
+                invite_timer.reset()
                 continue
 
             if self.is_in_room():
+                invite_timer.reset()
                 self.device.stuck_record_clear()
-                if self.wait_battle(wait_time=self.config.orochi.invite_config.wait_time):
+                if self.wait_battle(wait_time=wait_time):
                     self.run_general_battle(config=self.config.orochi.general_battle_config)
+                    invite_timer.reset()
                 else:
                     break
             # 队长秒开的时候，检测是否进入到战斗中
             elif self.check_take_over_battle(False, config=self.config.orochi.general_battle_config):
+                invite_timer.reset()
                 continue
+
+            # 迟迟没有邀请/战斗活动, 优雅退出本次任务
+            if invite_timer.reached():
+                logger.warning('Orochi member wait invite timeout')
+                success = False
+                break
 
         while 1:
             # 有一种情况是本来要退出的，但是队长邀请了进入的战斗的加载界面
@@ -291,7 +310,7 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
 
         self.ui_get_current_page()
         self.ui_goto(page_main)
-        return True
+        return success
 
     def run_alone(self):
         logger.info('Start run alone')
