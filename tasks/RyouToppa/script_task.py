@@ -155,9 +155,12 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
             logger.info("Unlock team.")
             self.ui_click(self.I_TOPPA_LOCK_TEAM, self.I_TOPPA_UNLOCK_TEAM)
         # --------------------------------------------------------------------------------------------------------------
-        # 开始突破: 每次回到选择突破界面都重新扫描8个区域, 重新计算进攻目标
+        # 开始突破: 完成1次战斗后回到选择界面重新扫描重算index;
+        # 选中的区域无法进战斗时游标+1选下一个, 绕完一圈才刷新对手缓存
         # --------------------------------------------------------------------------------------------------------------
         success = True
+        need_scan = True   # 首次进入/每次战斗结束后重新扫描
+        cursor = 0
         while 1:
             self.screenshot()
             if not self.appear(self.I_TOPPA_RECORD, threshold=0.6):
@@ -174,15 +177,28 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
             if datetime.now() >= self.start_time + time_delta:
                 logger.warning("We have attacked the limit time.")
                 break
-            # 重新识别8个区域状态, 计算第一个可攻打的区域
-            index = self.scan_area()
-            if index == -1:
-                logger.warning('All areas are not available, it will flush the area cache')
-                self.flush_area_cache()
-                continue
+            if need_scan:
+                # 重新识别8个区域状态(跳过已击破/攻略失败), 计算第一个可攻打的区域
+                index = self.scan_area()
+                if index == -1:
+                    logger.warning('All areas are not available, it will flush the area cache')
+                    self.flush_area_cache()
+                    continue
+                cursor = index
+                need_scan = False
             # 进攻
-            self.attack_area(index)
-            # 战斗结束回到选择界面, 等待画面稳定(失败/攻破图标动画)后再重新扫描
+            res = self.attack_area(cursor)
+            if res is None:
+                # 无法进战斗(画面无标志可识别): 游标+1选下一个, 绕完一圈刷新对手缓存
+                cursor += 1
+                if cursor >= len(area_map):
+                    logger.warning('All areas are not available, it will flush the area cache')
+                    cursor = 0
+                    self.flush_area_cache()
+            else:
+                # 完成1次战斗(胜/败), 回到选择界面重新扫描重算index
+                need_scan = True
+            # 等待画面稳定(失败/击破图标动画)后再进行下一步
             time.sleep(random.uniform(1, 2))
 
 
@@ -252,18 +268,16 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
 
     def check_area(self, index: int) -> bool:
         """
-        检查该区域是否攻略失败
+        检查该区域是否可攻打(已击破/攻略失败均视为不可攻打, 跳过)
         :return:
         """
         f1, f2 = area_map[index].get("fail_sign")
         f3, f4 = area_map[index].get("finished_sign")
         self.screenshot()
-        # 如果该区域已经被攻破则退出
-        # Ps: 这时候能打过的都打过了，没有能攻打的结界了, 代表任务已经完成，set_next_run time=1d
+        # 该区域已击破: 不可攻打(100%攻破的收尾由scan_area的全体击破判定负责)
         if self.appear(f3, threshold=0.8) or self.appear(f4, threshold=0.8):
-            logger.info('RyouToppa has tried to attack')
-            self.plan_tomorrow_ryoutoppa()
-            raise TaskEnd
+            logger.info('Area [%s] is finished, skip.' % str(index + 1))
+            return False
         # 如果该区域攻略失败返回 False
         if self.appear(f1, threshold=0.8) or self.appear(f2, threshold=0.8):
             logger.info('Area [%s] is futile attack, skip.' % str(index + 1))
@@ -273,24 +287,30 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
     def scan_area(self) -> int:
         """
         每次回到选择突破界面时重新扫描8个区域, 重新计算进攻目标
-        单张截图判断全部区域(各区域标志ROI在同一屏内), 返回第一个可攻打的区域index
-        :return: 可攻打区域index; 全部不可用返回 -1; 发现已攻破则内部结束任务(raise TaskEnd)
+        单张截图判断全部区域(各区域标志ROI在同一屏内)
+        :return: 可攻打区域index; 全部不可用返回 -1; 8个区域全部已击破(100%攻破)则结束任务
         """
         self.screenshot()
         image = self.device.image
+        finished_count = 0
         for i in range(len(area_map)):
             f1, f2 = area_map[i].get("fail_sign")
             f3, f4 = area_map[i].get("finished_sign")
-            # 该区域已被攻破: 能打过的都打过了, 任务完成(保持原check_area语义)
+            # 该区域已击破: 跳过, 自动往下一个找(保留原游标行为, 不得直接结束任务)
             if f3.match(image, threshold=0.8) or f4.match(image, threshold=0.8):
-                logger.info('RyouToppa has tried to attack')
-                self.plan_tomorrow_ryoutoppa()
-                raise TaskEnd
+                logger.info('Area [%s] is finished, skip.' % str(i + 1))
+                finished_count += 1
+                continue
             # 该区域攻略失败: 跳过
             if f1.match(image, threshold=0.8) or f2.match(image, threshold=0.8):
                 logger.info('Area [%s] is futile attack, skip.' % str(i + 1))
                 continue
             return i
+        # 8个区域全部已击破: 100%攻破, 任务完成
+        if finished_count >= len(area_map):
+            logger.info('RyouToppa is 100% finished')
+            self.plan_tomorrow_ryoutoppa()
+            raise TaskEnd
         return -1
 
     def flush_area_cache(self):
@@ -311,11 +331,11 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
 
     def attack_area(self, index: int):
         """
-        :return: 战斗成功(True) or 战斗失败(False) or 区域不可用（False） or 没有进攻机会（设定下次运行并退出）
+        :return: 战斗胜利(True) / 战斗失败(False); 无法进战斗返回 None(调用方游标+1选下一个)
         """
         # 每次进攻前检查区域可用性
         if not self.check_area(index):
-            return False
+            return None
 
         # 正式进攻会设定 2s - 10s 的随机延迟，避免攻击间隔及其相近被检测为脚本。
         if self.config.ryou_toppa.raid_config.random_delay:
@@ -332,7 +352,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
             self.screenshot()
             if click_failure_count >= 5:
                 logger.warning("Click failure, check your click position")
-                return False
+                return None
             if not self.appear(self.I_TOPPA_RECORD, threshold=0.85):
                 time.sleep(1)
                 self.screenshot()
