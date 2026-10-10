@@ -20,11 +20,11 @@ class GeneralBattleAssets:
 	# 通用战斗主题: 战斗左上角退出按钮按位置点击(各主题按钮中心均落在x27-38,y27-36, 该区域在所有主题按钮矩形内)
 	C_BATTLE_EXIT_POSITION = RuleClick(roi_front=(26,24,12,12), roi_back=(26,24,12,12), name="battle_exit_position")
 	# description 
-	C_REWARD_1 = RuleClick(roi_front=(606,603,325,87), roi_back=(606,603,325,87), name="reward_1")
+	C_REWARD_1 = RuleClick(roi_front=(606,530,325,70), roi_back=(606,530,325,70), name="reward_1")
 	# description 
 	C_REWARD_2 = RuleClick(roi_front=(25,134,224,472), roi_back=(25,134,224,472), name="reward_2")
 	# description 
-	C_REWARD_3 = RuleClick(roi_front=(1092,156,168,437), roi_back=(1092,156,168,437), name="reward_3")
+	C_REWARD_3 = RuleClick(roi_front=(1092,156,120,437), roi_back=(1092,156,120,437), name="reward_3")
 
 
 	# Click Rule Assets
