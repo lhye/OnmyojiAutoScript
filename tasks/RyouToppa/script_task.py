@@ -350,7 +350,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
         click_failure_count = 0
         while True:
             self.screenshot()
-            if click_failure_count >= 2:
+            # 上限3 = 正常流程消耗2次(点区域+点进攻) + 1次重试, 低于3会导致正常进攻必放弃
+            if click_failure_count >= 3:
                 logger.warning("Click failure, check your click position")
                 return None
             if not self.appear(self.I_TOPPA_RECORD, threshold=0.85):
