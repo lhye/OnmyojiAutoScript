@@ -350,10 +350,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
         click_failure_count = 0
         while True:
             self.screenshot()
-            # 上限3 = 正常流程消耗2次(点区域+点进攻) + 1次重试, 低于3会导致正常进攻必放弃
-            if click_failure_count >= 3:
-                logger.warning("Click failure, check your click position")
-                return None
+            # 先判是否已进战斗(点进攻后转场需要时间), 再判重试上限:
+            # 若上限判断在前, 转场期间计数到顶会直接放弃, 导致已出现的准备界面无人点"准备"(2026-10-10实锤)
             if not self.appear(self.I_TOPPA_RECORD, threshold=0.85):
                 time.sleep(1)
                 self.screenshot()
@@ -361,7 +359,10 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
                     continue
                 logger.info("Start attach area [%s]" % str(index + 1))
                 return self.run_general_battle(config=self.config.ryou_toppa.general_battle_config)
-
+            # 上限3: 点区域1次+点进攻1次为正常流程, 剩1次重试; 仅在选择界面停留时计数
+            if click_failure_count >= 3:
+                logger.warning("Click failure, check your click position")
+                return None
             if self.appear_then_click(RealmRaidAssets.I_FIRE, interval=2, threshold=0.8):
                 click_failure_count += 1
                 continue
