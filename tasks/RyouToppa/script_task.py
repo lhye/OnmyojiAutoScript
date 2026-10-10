@@ -350,7 +350,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
         click_failure_count = 0
         while True:
             self.screenshot()
-            if click_failure_count >= 5:
+            if click_failure_count >= 2:
                 logger.warning("Click failure, check your click position")
                 return None
             if not self.appear(self.I_TOPPA_RECORD, threshold=0.85):
