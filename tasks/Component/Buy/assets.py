@@ -11,19 +11,19 @@ class BuyAssets:
 
 
 	# Click Rule Assets
-	# description 
-	C_BUY_ONE = RuleClick(roi_front=(551,506,174,36), roi_back=(551,506,174,36), name="buy_one")
-	# description 
-	C_BUY_MORE = RuleClick(roi_front=(552, 578, 170, 28), roi_back=(552, 578, 170, 28), name="buy_more")
-	# 取消购买 
+	# description (弹窗高度随描述文字行数变化, 按钮在 y 531-635 间漂移, 区域需覆盖)
+	C_BUY_ONE = RuleClick(roi_front=(545,525,190,95), roi_back=(545,525,190,95), name="buy_one")
+	# description
+	C_BUY_MORE = RuleClick(roi_front=(545,525,190,95), roi_back=(545,525,190,95), name="buy_more")
+	# 取消购买
 	C_BUY_CANCEL = RuleClick(roi_front=(121,2,100,22), roi_back=(121,2,100,22), name="buy_cancel")
 
 
 	# Image Rule Assets
-	# 拉满 
-	I_BUY_PLUS = RuleImage(roi_front=(742, 436, 72, 80), roi_back=(742, 436, 72, 80), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_plus.png")
+	# 拉满 (按钮 y 随弹窗高度漂移: 挑战券 428 / 奉为达摩 455)
+	I_BUY_PLUS = RuleImage(roi_front=(742,420,72,110), roi_back=(742,420,72,110), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_plus.png")
 	# 加一个
-	I_BUY_ADD = RuleImage(roi_front=(652, 438, 72, 80), roi_back=(652, 438, 72, 80), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_add.png")
+	I_BUY_ADD = RuleImage(roi_front=(652,422,72,110), roi_back=(652,422,72,110), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_add.png")
 	# 减 
 	I_BUY_SUB = RuleImage(roi_front=(467,429,50,48), roi_back=(452,412,85,147), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_sub.png")
 	# 出现用魂玉购买 
@@ -33,7 +33,7 @@ class BuyAssets:
 
 
 	# Ocr Rule Assets
-	# Ocr-description 
-	O_BUY_NUMBER = RuleOcr(roi=(565,440,46,50), area=(565,440,46,50), mode="Digit", method="Default", keyword="", name="buy_number")
+	# Ocr-description (数字 y 随弹窗高度漂移, 区域覆盖两种弹窗)
+	O_BUY_NUMBER = RuleOcr(roi=(560,425,56,80), area=(560,425,56,80), mode="Digit", method="Default", keyword="", name="buy_number")
 
 

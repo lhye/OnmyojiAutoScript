@@ -1,14 +1,14 @@
 [
     {
         "itemName": "buy_one",
-        "roiFront": "551,506,174,36",
-        "roiBack": "551,506,174,36",
+        "roiFront": "545,525,190,95",
+        "roiBack": "545,525,190,95",
         "description": "description"
     },
     {
         "itemName": "buy_more",
-        "roiFront": "552,578,170,28",
-        "roiBack": "552,578,170,28",
+        "roiFront": "545,525,190,95",
+        "roiBack": "545,525,190,95",
         "description": "description"
     },
     {

@@ -2,8 +2,8 @@
     {
         "itemName": "buy_plus",
         "imageName": "buy_buy_plus.png",
-        "roiFront": "742,436,72,80",
-        "roiBack": "742,436,72,80",
+        "roiFront": "742,420,72,110",
+        "roiBack": "742,420,72,110",
         "method": "Template matching",
         "threshold": 0.8,
         "description": "拉满"
@@ -11,8 +11,8 @@
     {
         "itemName": "buy_add",
         "imageName": "buy_buy_add.png",
-        "roiFront": "652,438,72,80",
-        "roiBack": "652,438,72,80",
+        "roiFront": "652,422,72,110",
+        "roiBack": "652,422,72,110",
         "method": "Template matching",
         "threshold": 0.8,
         "description": "加一个"
