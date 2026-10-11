@@ -91,34 +91,35 @@ class GeneralBattle(BattleWait, GeneralBuff):
             sleep(random.uniform(0.4, 0.8))
         return False
 
-    def retry_prepare_click(self, timeout: float = 8) -> bool:
+    def retry_prepare_click(self, timeout: float = 10) -> bool:
         """
         battle_before 超时后的补偿: 再次识别画面并尝试开始战斗。
         点击"开始战斗"可能被预设面板关闭动画拦截而未生效, 超时返回后画面已稳定,
         此时若仍在战斗准备界面则再点击一次开始战斗; 若已进入战斗则直接成功。
         窗口不能太短: 预设面板关闭动画+转场可能超过3s, 期间is_in_prepare不命中导致补点落空
         (2026-09-15 悬赏秘闻卡死实测)。
+        2026-10-11: 识别与点击统一改用GB_PREPARE_HIGHLIGHT(新UI实测可匹配),
+        旧版is_in_prepare全家桶(I_BUFF/I_PREPARE_HIGHLIGHT/I_PRESET)在新UI全部失配,
+        导致兜底窗口"看不见"准备界面一次补点都不点(个人突破卡准备界面实测);
+        补点放宽为最多3次(间隔2s), 准备界面加载期整批点击被吞时单次补点不可靠。
         :return: True: 超时内确认已进入真实战斗
                  False: 超时仍未进入战斗(界面异常, 应由上层按战斗失败处理)
         """
         timer = Timer(timeout).start()
-        clicked = False  # 只补点一次, 避免在界面切换/点击延迟期间重复触发开始战斗
+        click_count = 0  # 最多补点3次: 点击间隔2s, 给足界面动画/加载时间
         while not timer.reached():
             self.screenshot()
             if self.is_in_real_battle(False):  # 已经进入战斗
                 return True
-            if self.is_in_prepare(False):  # 仍在准备界面
-                if not clicked:
-                    clicked = True  # 只补点一次: 无论本次点击是否成功, 之后仅轮询
-                    if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8):
-                        continue
-                    sleep(0.3)
-                    continue
-                # 已补点过一次, 只轮询等待进入战斗, 不再重复点击
+            if click_count >= 3:
+                # 补点次数用尽, 剩余时间只轮询等待进入战斗
                 sleep(0.3)
                 continue
-            # 未知界面, 等待画面变化
-            sleep(random.uniform(0.4, 0.8))
+            if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=2) \
+                    or self.appear_then_click(self.GB_PREPARE_HIGHLIGHT, interval=2):
+                click_count += 1
+                continue
+            sleep(0.3)
         return False
 
     def run_general_battle_back(self, config: GeneralBattleConfig = None, exit_four: bool = False) -> bool:
