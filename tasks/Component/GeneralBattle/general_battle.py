@@ -98,10 +98,10 @@ class GeneralBattle(BattleWait, GeneralBuff):
         此时若仍在战斗准备界面则再点击一次开始战斗; 若已进入战斗则直接成功。
         窗口不能太短: 预设面板关闭动画+转场可能超过3s, 期间is_in_prepare不命中导致补点落空
         (2026-09-15 悬赏秘闻卡死实测)。
-        2026-10-11: 识别与点击统一改用GB_PREPARE_HIGHLIGHT(新UI实测可匹配),
-        旧版is_in_prepare全家桶(I_BUFF/I_PREPARE_HIGHLIGHT/I_PRESET)在新UI全部失配,
-        导致兜底窗口"看不见"准备界面一次补点都不点(个人突破卡准备界面实测);
-        补点放宽为最多3次(间隔2s), 准备界面加载期整批点击被吞时单次补点不可靠。
+        2026-10-11: 模板更新为新UI准备按钮(大鼓), 旧版is_in_prepare全家桶
+        (I_BUFF/I_PRESET)在新UI失配, 导致兜底窗口"看不见"准备界面一次补点都不点
+        (个人突破卡准备界面实测); 补点放宽为最多3次(间隔2s),
+        准备界面加载期整批点击被吞时单次补点不可靠。
         :return: True: 超时内确认已进入真实战斗
                  False: 超时仍未进入战斗(界面异常, 应由上层按战斗失败处理)
         """
@@ -115,8 +115,7 @@ class GeneralBattle(BattleWait, GeneralBuff):
                 # 补点次数用尽, 剩余时间只轮询等待进入战斗
                 sleep(0.3)
                 continue
-            if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=2) \
-                    or self.appear_then_click(self.GB_PREPARE_HIGHLIGHT, interval=2):
+            if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=2):
                 click_count += 1
                 continue
             sleep(0.3)
