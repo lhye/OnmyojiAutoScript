@@ -39,6 +39,9 @@ class Scales(Buy, MallNavbar):
             if self.appear(self.I_SCA_SELECT_1) and self.appear(self.I_SCA_SELECT_2):
                 return
             if self.appear_then_click(start_click, interval=1):
+                # 弹窗滑入动画期间 I_BUY_PLUS 尚不可识别, 若立即下一轮会再次点击
+                # start_click(礼盒在弹窗外), 把刚打开的弹窗点关(2026-10-11 海汐实测)
+                time.sleep(1.2)
                 continue
         # 设置购买的数量
         if number is None:
@@ -82,6 +85,17 @@ class Scales(Buy, MallNavbar):
                 logger.info('Scales get success')
                 break
 
+            # 弹窗已关闭且无成功提示: 购买流程结束, 避免对着空页面盲点
+            # (2026-10-11 秘魂屋买海汐礼盒: 弹窗关闭后成功标志未出现, 盲点buy_more挂死)
+            if not self.appear(self.I_BUY_PLUS):
+                time.sleep(0.8)
+                self.screenshot()
+                if self.appear(self.I_SCA_SIX_STAR) or self.appear(self.I_SCA_REWARD):
+                    continue
+                if not self.appear(self.I_BUY_PLUS):
+                    logger.warning('Purchase popup closed without success sign, scales buy done')
+                    break
+
             if self.click(self.C_BUY_MORE, interval=5):
                 continue
 
@@ -91,6 +105,16 @@ class Scales(Buy, MallNavbar):
             self.screenshot()
             if self.appear(self.I_SCA_SELECT_1):
                 break
+            # 弹窗已关闭且选魂界面未出现: 购买流程异常结束, 跳过选魂避免盲点挂死
+            # (2026-10-11 秘魂屋买海汐礼盒实测)
+            if not self.appear(self.I_BUY_PLUS):
+                time.sleep(0.8)
+                self.screenshot()
+                if self.appear(self.I_SCA_SELECT_1):
+                    continue
+                if not self.appear(self.I_BUY_PLUS):
+                    logger.warning('Purchase popup closed without select screen, skip selecting')
+                    break
             if self.click(self.C_BUY_MORE, interval=3):
                 continue
         logger.info('Scales start select souls')

@@ -160,6 +160,18 @@ class Buy(BaseTask, BuyAssets):
                 logger.warning('Buy number limit')
                 break
 
+            # 弹窗已关闭且无领奖/上限弹窗: 购买完成, 避免对着空屏幕盲点
+            # (2026-10-11 寄售屋买券: 新UI小额购买无领奖画面, 弹窗关闭后循环盲点buy_more挂死)
+            # 先等一拍再确认, 领奖画面可能正在弹出, 避免错过奖励收集
+            if not self.appear(self.I_BUY_PLUS):
+                time.sleep(0.8)
+                self.screenshot()
+                if self.ui_reward_appear_click():
+                    continue
+                if not self.appear(self.I_BUY_PLUS):
+                    logger.info('Purchase popup closed, buy done')
+                    break
+
             if self.click(self.C_BUY_MORE, interval=2):
                 continue
 

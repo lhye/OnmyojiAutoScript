@@ -2,7 +2,7 @@
   {
     "itemName": "me_black",
     "imageName": "medal_me_black.png",
-    "roiFront": "631,152,130,120",
+    "roiFront": "114,100,920,485",
     "roiBack": "165,121,859,431",
     "method": "Template matching",
     "threshold": 0.8,
@@ -11,7 +11,7 @@
   {
     "itemName": "me_blue",
     "imageName": "medal_me_blue.png",
-    "roiFront": "176,148,138,126",
+    "roiFront": "114,100,920,485",
     "roiBack": "139,115,887,464",
     "method": "Template matching",
     "threshold": 0.8,
@@ -20,7 +20,7 @@
   {
     "itemName": "me_ap",
     "imageName": "medal_me_ap.png",
-    "roiFront": "842,395,145,123",
+    "roiFront": "114,100,920,485",
     "roiBack": "156,111,862,454",
     "method": "Template matching",
     "threshold": 0.8,
@@ -29,7 +29,7 @@
   {
     "itemName": "me_souls",
     "imageName": "medal_me_souls.png",
-    "roiFront": "173,391,148,133",
+    "roiFront": "114,100,920,485",
     "roiBack": "121,116,898,476",
     "method": "Template matching",
     "threshold": 0.8,
@@ -38,7 +38,7 @@
   {
     "itemName": "me_white",
     "imageName": "medal_me_white.png",
-    "roiFront": "399,391,142,131",
+    "roiFront": "114,100,920,485",
     "roiBack": "115,114,908,452",
     "method": "Template matching",
     "threshold": 0.8,
@@ -47,7 +47,7 @@
   {
     "itemName": "me_challenge_pass",
     "imageName": "medal_me_challenge_pass.png",
-    "roiFront": "618,390,146,129",
+    "roiFront": "114,100,920,485",
     "roiBack": "114,102,914,478",
     "method": "Template matching",
     "threshold": 0.8,
@@ -56,7 +56,7 @@
   {
     "itemName": "me_red",
     "imageName": "medal_me_red.png",
-    "roiFront": "847,146,137,129",
+    "roiFront": "114,100,920,485",
     "roiBack": "141,129,864,454",
     "method": "Template matching",
     "threshold": 0.8,
@@ -65,7 +65,7 @@
   {
     "itemName": "me_broken",
     "imageName": "medal_me_broken.png",
-    "roiFront": "398,144,143,116",
+    "roiFront": "114,100,920,485",
     "roiBack": "146,116,866,475",
     "method": "Template matching",
     "threshold": 0.8,

@@ -14,16 +14,16 @@ class BuyAssets:
 	# description 
 	C_BUY_ONE = RuleClick(roi_front=(551,506,174,36), roi_back=(551,506,174,36), name="buy_one")
 	# description 
-	C_BUY_MORE = RuleClick(roi_front=(551,563,174,17), roi_back=(551,563,174,17), name="buy_more")
+	C_BUY_MORE = RuleClick(roi_front=(552, 578, 170, 28), roi_back=(552, 578, 170, 28), name="buy_more")
 	# 取消购买 
 	C_BUY_CANCEL = RuleClick(roi_front=(121,2,100,22), roi_back=(121,2,100,22), name="buy_cancel")
 
 
 	# Image Rule Assets
 	# 拉满 
-	I_BUY_PLUS = RuleImage(roi_front=(759,422,50,58), roi_back=(746,397,98,156), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_plus.png")
-	# 加一个 
-	I_BUY_ADD = RuleImage(roi_front=(671,428,51,54), roi_back=(645,412,111,141), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_add.png")
+	I_BUY_PLUS = RuleImage(roi_front=(742, 436, 72, 80), roi_back=(742, 436, 72, 80), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_plus.png")
+	# 加一个
+	I_BUY_ADD = RuleImage(roi_front=(652, 438, 72, 80), roi_back=(652, 438, 72, 80), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_add.png")
 	# 减 
 	I_BUY_SUB = RuleImage(roi_front=(467,429,50,48), roi_back=(452,412,85,147), threshold=0.8, method="Template matching", file="./tasks/Component/Buy/buy/buy_buy_sub.png")
 	# 出现用魂玉购买 
@@ -34,6 +34,6 @@ class BuyAssets:
 
 	# Ocr Rule Assets
 	# Ocr-description 
-	O_BUY_NUMBER = RuleOcr(roi=(578,416,52,71), area=(578,416,52,71), mode="Digit", method="Default", keyword="", name="buy_number")
+	O_BUY_NUMBER = RuleOcr(roi=(565,440,46,50), area=(565,440,46,50), mode="Digit", method="Default", keyword="", name="buy_number")
 
 
