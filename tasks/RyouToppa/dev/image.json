@@ -2,8 +2,8 @@
   {
     "itemName": "toppa_record",
     "imageName": "res_toppa_record.png",
-    "roiFront": "66,633,64,39",
-    "roiBack": "40,606,119,89",
+    "roiFront": "92,600,96,90",
+    "roiBack": "40,595,220,115",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "description"
