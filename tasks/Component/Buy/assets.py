@@ -11,10 +11,10 @@ class BuyAssets:
 
 
 	# Click Rule Assets
-	# description (弹窗高度随描述文字行数变化, 按钮在 y 531-635 间漂移, 区域需覆盖)
-	C_BUY_ONE = RuleClick(roi_front=(545,525,190,95), roi_back=(545,525,190,95), name="buy_one")
+	# description (弹窗高度随描述文字行数变化, 购买按钮在 y ~500-635 间漂移, 区域需覆盖且不越过矮弹窗底边)
+	C_BUY_ONE = RuleClick(roi_front=(545,495,190,120), roi_back=(545,495,190,120), name="buy_one")
 	# description
-	C_BUY_MORE = RuleClick(roi_front=(545,525,190,95), roi_back=(545,525,190,95), name="buy_more")
+	C_BUY_MORE = RuleClick(roi_front=(545,495,190,120), roi_back=(545,495,190,120), name="buy_more")
 	# 取消购买
 	C_BUY_CANCEL = RuleClick(roi_front=(121,2,100,22), roi_back=(121,2,100,22), name="buy_cancel")
 
