@@ -163,7 +163,10 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
         cursor = 0
         while 1:
             self.screenshot()
-            if not self.appear(self.I_TOPPA_RECORD, threshold=0.6):
+            # 阈值0.8: 个人突破页对 breakthrough记录徽章有~0.7假分, 0.6会误放行
+            if not self.appear(self.I_TOPPA_RECORD, threshold=0.8):
+                # 战斗结束后可能回落到个人突破页(点"个人"页签所在界面), 点"阴阳寮"页签回寮突破页
+                self.appear_then_click(self.I_RYOU_TOPPA, interval=3)
                 continue
             # 设置长任务标志,用来寻找寮突可进攻的目标
             self.device.stuck_record_add('PREPARE_BEFORE_BATTLE')
