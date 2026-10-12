@@ -2,6 +2,7 @@
 # @author runhey
 # github https://github.com/runhey
 import cv2
+import time
 import numpy as np
 
 from numpy import float32, int32, uint8, fromfile
@@ -15,7 +16,9 @@ from module.base.utils.utils import random_normal_distribution_int
 
 
 class RuleImage(RuleImageMallResourceMixin):
-    debug_mode: bool = False
+    # 匹配失败时打印资产名+分数(同一资产5秒节流), 便于从报错日志定位"哪个资产失配导致卡死"
+    # 成功的匹配不打(点击日志已可佐证), 避免日志爆炸
+    debug_mode: bool = True
 
     def __init__(self, roi_front: tuple, roi_back: tuple, method: str, threshold: float, file: str) -> None:
         """
@@ -31,6 +34,7 @@ class RuleImage(RuleImageMallResourceMixin):
         self._kp = None  #
         self._des = None
         self.method = method
+        self._last_fail_log = 0.0  # 失败日志节流
 
         self.roi_front: list = list(roi_front)
         self.roi_back = roi_back
@@ -163,15 +167,27 @@ class RuleImage(RuleImageMallResourceMixin):
 
         res = cv2.matchTemplate(source, mat, cv2.TM_CCOEFF_NORMED)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)  # 最小匹配度，最大匹配度，最小匹配度的坐标，最大匹配度的坐标
-        if self.debug_mode:
-            logger.attr(self.name, f'matching score {max_val:.5f}')
 
         if max_val > threshold:
             self.roi_front[0] = max_loc[0] + self.roi_back[0]
             self.roi_front[1] = max_loc[1] + self.roi_back[1]
             return True
         else:
+            self._debug_fail_log(max_val)
             return False
+
+    def _debug_fail_log(self, score: float) -> None:
+        """
+        匹配失败时打印资产名+分数, 便于从日志定位"哪个资产失配导致卡死"。
+        同一资产5秒内只打一条, 避免每帧大量识别刷爆日志。
+        """
+        if not self.debug_mode:
+            return
+        now = time.time()
+        if now - self._last_fail_log < 5:
+            return
+        self._last_fail_log = now
+        logger.attr(self.name, f'match fail {score:.4f}/{self.threshold} roi_back={self.roi_back}')
 
     def match_multi_scale(self, image: np.array, threshold: float = None,
                           scales: list = None, scale_range: tuple = None) -> bool:
