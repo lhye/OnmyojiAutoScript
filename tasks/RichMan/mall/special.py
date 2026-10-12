@@ -28,6 +28,11 @@ class Special(Buy, MallNavbar):
         totem_bought, medium_bought, low_bought = False, False, False
         while 1:
             self.screenshot()
+            # 奖励弹窗残留兜底: 购买后奖励弹窗渲染延迟时上层已判定"弹窗关闭"退出,
+            # 残留弹窗会遮住页面标志导致下面的滑动无限空转 (2026-10-12 杂货铺御灵实测)
+            if self.ui_reward_appear_click():
+                time.sleep(0.5)
+                continue
             if not totem_bought and self.appear(self.I_SP_BUY_TOTEM):
                 self._special_totom(con.totem_pass)
                 totem_bought = True
@@ -164,7 +169,8 @@ class Special(Buy, MallNavbar):
                   .replace('教', '数').replace('刺', '剩')
                   .replace('头', '买'))
         # 冒号可能被漏识别, 如"剩余购买次数2", 所以冒号设为可选
-        matched = re.search(r'(?:剩余)?(?:购买次数|本周剩余数量)：?(\d+)', result)
+        # "次数"常被OCR吞成"数"(2026-10-12 实测"剩余购买数：10"导致挑战券被误判0次跳过)
+        matched = re.search(r'(?:剩余)?(?:购买次数|购买数|本周剩余数量)：?(\d+)', result)
         result = int(matched.group(1)) if matched else 0
         logger.info(f'Remain [{result}]')
         return result
