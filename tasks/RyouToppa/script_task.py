@@ -364,6 +364,12 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
                 return self.run_general_battle(config=self.config.ryou_toppa.general_battle_config)
             # 上限3: 点区域1次+点进攻1次为正常流程, 剩1次重试; 仅在选择界面停留时计数
             if click_failure_count >= 3:
+                # 转场淡出期徽章仍>=0.85可见, 放弃前等1s复查: 进攻点击已生效却在上限帧被判失败,
+                # 会把孤儿准备界面留给主循环空转卡死(2026-10-12 22:12 oas4实锤)
+                time.sleep(1)
+                self.screenshot()
+                if not self.appear(self.I_TOPPA_RECORD, threshold=0.85):
+                    continue
                 logger.warning("Click failure, check your click position")
                 return None
             if self.appear_then_click(RealmRaidAssets.I_FIRE, interval=2, threshold=0.8):
