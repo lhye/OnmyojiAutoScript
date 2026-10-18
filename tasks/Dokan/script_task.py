@@ -140,9 +140,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 if not try_start_dokan:
                     is_dokan_activated = False
                     break
-                # NOTE 只在周一尝试建立道馆
-                if datetime.now().weekday() == 0:
-                    self.creat_dokan()
+                # 找道馆前先尝试建立道馆(道馆已建立时点击无反应, 无副作用)
+                self.creat_dokan()
 
                 # 寻找合适道馆,找不到直接退出
                 if not self.find_dokan(self.config.dokan.dokan_config.find_dokan_score):
@@ -734,23 +733,30 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         return False
 
     def creat_dokan(self):
-        # 点击创建道馆
-        # 当 成功建立道馆并关闭道馆信息窗口后退出
-        #  或 点击创建道馆按钮无反应(道馆已经建立的情况下),5秒后退出
-        while True:
+        """
+        找道馆前尝试建立道馆:
+        点击"建立道馆"最多2次, 若始终不弹确认框(点击无反应)说明道馆已建立, 直接跳过;
+        弹出"确定消耗...创建道馆?"后点击"建立", 再关闭创建后弹出的道馆信息窗口
+        :return:
+        """
+        # 点击"建立道馆", 最多2次
+        confirm_shown = False
+        for _ in range(2):
             self.screenshot()
-            if self.appear(self.I_RYOU_DOKAN_DOKAN_INFO_CLOSE):
-                self.ui_click_until_disappear(self.I_RYOU_DOKAN_DOKAN_INFO_CLOSE)
-                logger.info("Create Dokan Success")
-                break
             if self.appear(self.I_RYOU_DOKAN_CREATE_DOKAN_ENSURE):
-                self.ui_click_until_appear_or_timeout(self.I_RYOU_DOKAN_CREATE_DOKAN_ENSURE,
-                                                      stop=self.I_RYOU_DOKAN_DOKAN_INFO_CLOSE, interval=2, timeout=10)
-                continue
-            if self.ui_click_until_appear_or_timeout(self.I_RYOU_DOKAN_CREATE_DOKAN,
-                                                     self.I_RYOU_DOKAN_CREATE_DOKAN_ENSURE, 2, 10):
-                continue
-            break
+                confirm_shown = True
+                break
+            self.click(self.I_RYOU_DOKAN_CREATE_DOKAN, interval=2)
+        if not confirm_shown:
+            logger.info("Create Dokan: no reaction after 2 clicks, dokan already exists, skip")
+            return
+
+        # 点击"建立", 等待创建后弹出的道馆信息窗口
+        self.ui_click_until_appear_or_timeout(self.I_RYOU_DOKAN_CREATE_DOKAN_ENSURE,
+                                             stop=self.I_RYOU_DOKAN_DOKAN_INFO_CLOSE, interval=2, timeout=10)
+        logger.info("Create Dokan Success")
+        # 关闭创建后的道馆信息窗口
+        self.ui_click_until_disappear(self.I_RYOU_DOKAN_DOKAN_INFO_CLOSE, interval=2)
 
     def find_all_element(self, item, offset: tuple) -> list[tuple[int, int, int, int]]:
         """
