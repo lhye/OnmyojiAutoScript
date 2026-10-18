@@ -210,7 +210,8 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
             last_group_text = now_group_text
         logger.info('Swipe to top of group')
 
-        # 判断有无目标分组
+        # 判断有无目标分组(找不到目标分组时无限滑动会导致GameStuck, 2026-10-17 error/1792232641113实锤, 加滑动上限)
+        swipe_count = 0
         while 1:
             self.screenshot()
             # 获取当前分组名
@@ -221,6 +222,10 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
             # 有则跳出检测
             if result and len(result) > 0:
                 break
+            swipe_count += 1
+            if swipe_count >= 15:
+                logger.warning(f'Group {groupName} not found after 15 swipes, skip switch soul')
+                return False
             self.swipe(self.S_SS_GROUP_SWIPE_DOWN)
             sleep(1.5)
         logger.info('Swipe down to find target group')
@@ -247,7 +252,8 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
             last_team_text = now_team_text
         logger.info('Swipe to top of team')
 
-        # 判断当前分组有无目标阵容
+        # 判断当前分组有无目标阵容(找不到时无限滑动会GameStuck, 同上加滑动上限)
+        team_swipe_count = 0
         while 1:
             self.screenshot()
             # 获取当前阵容名
@@ -258,6 +264,10 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
             # 有则跳出检测
             if result and len(result) > 0:
                 break
+            team_swipe_count += 1
+            if team_swipe_count >= 15:
+                logger.warning(f'Team {teamName} not found after 15 swipes, skip switch soul')
+                return False
             self.swipe(self.S_SS_TEAM_SWIPE_UP, 0.3)
         logger.info('Swipe up to find target team')
 
