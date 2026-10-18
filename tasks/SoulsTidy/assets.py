@@ -13,10 +13,10 @@ class SoulsTidyAssets:
 	# Click Rule Assets
 	# 御魂详细 
 	C_ST_DETAIL = RuleClick(roi_front=(1188,318,87,74), roi_back=(1190,317,87,74), name="st_detail")
-	# 出现神赐 
-	C_ST_GOD_PRSENT = RuleClick(roi_front=(717,165,100,48), roi_back=(926,165,100,54), name="st_god_prsent")
-	# 御魂奉纳奖励 
-	C_ST_SOUL_OFFERING_REWARD = RuleClick(roi_front=(717,165,100,48), roi_back=(926,165,100,54), name="st_soul_offering_reward")
+	# 出现神赐
+	C_ST_GOD_PRSENT = RuleClick(roi_front=(975,275,60,50), roi_back=(975,275,60,50), name="st_god_prsent")
+	# 御魂奉纳奖励
+	C_ST_SOUL_OFFERING_REWARD = RuleClick(roi_front=(975,275,60,50), roi_back=(975,275,60,50), name="st_soul_offering_reward")
 
 
 	# Image Rule Assets
@@ -58,10 +58,10 @@ class SoulsTidyAssets:
 	I_ST_SOULS_CLOSE = RuleImage(roi_front=(1180,227,56,83), roi_back=(1166,215,84,107), threshold=0.8, method="Template matching", file="./tasks/SoulsTidy/simple/simple_st_souls_close.png")
 	# 5星御魂堆叠标识_1个 
 	I_ST_SOUL_STACK_1 = RuleImage(roi_front=(89,239,105,19), roi_back=(89,239,105,19), threshold=0.8, method="Template matching", file="./tasks/SoulsTidy/simple/simple_st_soul_stack_1.png")
-	# 吉运 
-	I_ST_LUCK = RuleImage(roi_front=(596,236,110,56), roi_back=(596,236,110,56), threshold=0.8, method="Template matching", file="./tasks/SoulsTidy/simple/simple_st_luck.png")
-	# 小吉运 
-	I_ST_SMALL_LUCK = RuleImage(roi_front=(549,236,201,35), roi_back=(549,236,201,35), threshold=0.8, method="Template matching", file="./tasks/SoulsTidy/simple/simple_st_small_luck.png")
+	# 吉运
+	I_ST_LUCK = RuleImage(roi_front=(596,135,110,56), roi_back=(542,110,230,120), threshold=0.8, method="Template matching", file="./tasks/SoulsTidy/simple/simple_st_luck.png")
+	# 小吉运
+	I_ST_SMALL_LUCK = RuleImage(roi_front=(549,135,201,35), roi_back=(530,110,260,120), threshold=0.8, method="Template matching", file="./tasks/SoulsTidy/simple/simple_st_small_luck.png")
 
 
 	# Long Click Rule Assets

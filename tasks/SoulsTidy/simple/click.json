@@ -7,14 +7,14 @@
   },
   {
     "itemName": "st_god_prsent",
-    "roiFront": "717,165,100,48",
-    "roiBack": "926,165,100,54",
+    "roiFront": "975,275,60,50",
+    "roiBack": "975,275,60,50",
     "description": "出现神赐"
   },
   {
     "itemName": "st_soul_offering_reward",
-    "roiFront": "717,165,100,48",
-    "roiBack": "926,165,100,54",
+    "roiFront": "975,275,60,50",
+    "roiBack": "975,275,60,50",
     "description": "御魂奉纳奖励"
   }
 ]
