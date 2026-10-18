@@ -221,7 +221,18 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         self.device.stuck_timer_long = Timer(300, count=300).start()
 
         # 等待回到挑战boss主界面
-        self.wait_until_appear(self.I_BOSS_GATHER)
+        # 战斗结束后游戏可能弹出boss介绍卷轴("点击屏幕退出")遮挡集结页,
+        # 原wait_until_appear无点击无超时导致GameStuck(2026-10-16 error/1792146343701实锤)
+        gather_timer = Timer(60).start()
+        while 1:
+            self.screenshot()
+            if self.appear(self.I_BOSS_GATHER):
+                break
+            if self.appear_then_click(self.I_BOSS_SCROLL_CLOSE, interval=2):
+                continue
+            if gather_timer.reached():
+                logger.warning('Wait boss gather page timeout, continue anyway')
+                break
         while 1:
             self.screenshot()
             if self.appear(self.I_DE_LOCATION):
@@ -395,10 +406,21 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             logger.info(f'Question: {question}, Answer: {index}')
             return click_match[index]
 
+        # 点灯笼开信(2026-10-18 error/1792318619245实锤: 灯笼误判/点击后进入战斗准备页时,
+        # 无限点击lantern触发风控GameTooManyClickError, 增加点击上限与战斗接管兜底)
+        mail_click_count = 0
         while 1:
             self.screenshot()
             if self.appear(self.I_LETTER_CLOSE):
                 break
+            if self.is_in_prepare(screenshot=False):
+                logger.warning('Lantern click lead to battle prepare, switch to battle flow')
+                self._battle(target_click)
+                return
+            mail_click_count += 1
+            if mail_click_count >= 12:
+                logger.warning('Letter window not appear after 12 clicks, skip mail')
+                return
             if self.click(target_click, interval=1):
                 continue
         logger.info('Question answering Start')

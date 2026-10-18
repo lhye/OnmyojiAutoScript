@@ -48,8 +48,10 @@ class DemonEncounterAssets:
 	I_BEST_BOSS_FIRE = RuleImage(roi_front=(1087,562,100,36), roi_back=(1087,562,100,36), threshold=0.8, method="Template matching", file="./tasks/DemonEncounter/boss/boss_best_boss_fire.png")
 	# 战斗失败-等待界面 
 	I_BOSS_WAIT = RuleImage(roi_front=(490,50,350,150), roi_back=(490,50,350,150), threshold=0.8, method="Template matching", file="./tasks/DemonEncounter/boss/boss_boss_wait.png")
-	# 战斗结束标识，左下角有战绩按钮 
+	# 战斗结束标识，左下角有战绩按钮
 	I_BOSS_DONE_CHECK = RuleImage(roi_front=(0,450,100,130), roi_back=(0,450,100,130), threshold=0.8, method="Template matching", file="./tasks/DemonEncounter/boss/boss_boss_done_check.png")
+	# boss介绍卷轴右上角X(战斗后弹出"点击屏幕退出"卷轴遮挡集结页时关闭)
+	I_BOSS_SCROLL_CLOSE = RuleImage(roi_front=(1092,106,36,34), roi_back=(1060,90,120,90), threshold=0.75, method="Template matching", file="./tasks/DemonEncounter/boss/boss_scroll_close.png")
 
 
 	# Ocr Rule Assets
