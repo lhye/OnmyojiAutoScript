@@ -27,42 +27,42 @@ area_map = (
     {
         "fail_sign": (RyouToppaAssets.I_AREA_1_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_1_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_1,
-        "finished_sign": (RyouToppaAssets.I_AREA_1_FINISHED, RyouToppaAssets.I_AREA_1_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_1_FINISHED, RyouToppaAssets.I_AREA_1_FINISHED_NEW, RyouToppaAssets.I_AREA_1_FINISHED_V3)
     },
     {
         "fail_sign": (RyouToppaAssets.I_AREA_2_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_2_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_2,
-        "finished_sign": (RyouToppaAssets.I_AREA_2_FINISHED, RyouToppaAssets.I_AREA_2_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_2_FINISHED, RyouToppaAssets.I_AREA_2_FINISHED_NEW, RyouToppaAssets.I_AREA_2_FINISHED_V3)
     },
     {
         "fail_sign": (RyouToppaAssets.I_AREA_3_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_3_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_3,
-        "finished_sign": (RyouToppaAssets.I_AREA_3_FINISHED, RyouToppaAssets.I_AREA_3_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_3_FINISHED, RyouToppaAssets.I_AREA_3_FINISHED_NEW, RyouToppaAssets.I_AREA_3_FINISHED_V3)
     },
     {
         "fail_sign": (RyouToppaAssets.I_AREA_4_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_4_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_4,
-        "finished_sign": (RyouToppaAssets.I_AREA_4_FINISHED, RyouToppaAssets.I_AREA_4_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_4_FINISHED, RyouToppaAssets.I_AREA_4_FINISHED_NEW, RyouToppaAssets.I_AREA_4_FINISHED_V3)
     },
     {
         "fail_sign": (RyouToppaAssets.I_AREA_5_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_5_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_5,
-        "finished_sign": (RyouToppaAssets.I_AREA_5_FINISHED, RyouToppaAssets.I_AREA_5_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_5_FINISHED, RyouToppaAssets.I_AREA_5_FINISHED_NEW, RyouToppaAssets.I_AREA_5_FINISHED_V3)
     },
     {
         "fail_sign": (RyouToppaAssets.I_AREA_6_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_6_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_6,
-        "finished_sign": (RyouToppaAssets.I_AREA_6_FINISHED, RyouToppaAssets.I_AREA_6_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_6_FINISHED, RyouToppaAssets.I_AREA_6_FINISHED_NEW, RyouToppaAssets.I_AREA_6_FINISHED_V3)
     },
     {
         "fail_sign": (RyouToppaAssets.I_AREA_7_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_7_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_7,
-        "finished_sign": (RyouToppaAssets.I_AREA_7_FINISHED, RyouToppaAssets.I_AREA_7_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_7_FINISHED, RyouToppaAssets.I_AREA_7_FINISHED_NEW, RyouToppaAssets.I_AREA_7_FINISHED_V3)
     },
     {
         "fail_sign": (RyouToppaAssets.I_AREA_8_IS_FAILURE_NEW, RyouToppaAssets.I_AREA_8_IS_FAILURE),
         "rule_click": RyouToppaAssets.C_AREA_8,
-        "finished_sign": (RyouToppaAssets.I_AREA_8_FINISHED, RyouToppaAssets.I_AREA_8_FINISHED_NEW)
+        "finished_sign": (RyouToppaAssets.I_AREA_8_FINISHED, RyouToppaAssets.I_AREA_8_FINISHED_NEW, RyouToppaAssets.I_AREA_8_FINISHED_V3)
     }
 )
 
@@ -156,7 +156,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
             self.ui_click(self.I_TOPPA_LOCK_TEAM, self.I_TOPPA_UNLOCK_TEAM)
         # --------------------------------------------------------------------------------------------------------------
         # 开始突破: 完成1次战斗后回到选择界面重新扫描重算index;
-        # 选中的区域无法进战斗时游标+1选下一个, 绕完一圈才刷新对手缓存
+        # 选中的区域无法进战斗时游标+1选下一个;
+        # 8个区域全部已击破或攻略失败(无可攻打目标)即视为任务结束, 不再刷新对手
         # --------------------------------------------------------------------------------------------------------------
         success = True
         need_scan = True   # 首次进入/每次战斗结束后重新扫描
@@ -184,20 +185,20 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
                 # 重新识别8个区域状态(跳过已击破/攻略失败), 计算第一个可攻打的区域
                 index = self.scan_area()
                 if index == -1:
-                    logger.warning('All areas are not available, it will flush the area cache')
-                    self.flush_area_cache()
-                    continue
+                    # 无可攻打目标(全部已击破或攻略失败): 任务结束, 不再刷新对手
+                    logger.info('All areas are finished or futile, task complete')
+                    break
                 cursor = index
                 need_scan = False
             # 进攻
             res = self.attack_area(cursor)
             if res is None:
-                # 无法进战斗(画面无标志可识别): 游标+1选下一个, 绕完一圈刷新对手缓存
+                # 无法进战斗(画面无标志可识别): 游标+1选下一个
                 cursor += 1
                 if cursor >= len(area_map):
-                    logger.warning('All areas are not available, it will flush the area cache')
-                    cursor = 0
-                    self.flush_area_cache()
+                    # 全部区域都进不去战斗: 视为已无可用目标, 任务结束
+                    logger.info('All areas are finished or futile, task complete')
+                    break
             else:
                 # 完成1次战斗(胜/败), 回到选择界面重新扫描重算index
                 need_scan = True
@@ -274,15 +275,15 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
         检查该区域是否可攻打(已击破/攻略失败均视为不可攻打, 跳过)
         :return:
         """
-        f1, f2 = area_map[index].get("fail_sign")
-        f3, f4 = area_map[index].get("finished_sign")
+        fail_signs = area_map[index].get("fail_sign")
+        finished_signs = area_map[index].get("finished_sign")
         self.screenshot()
         # 该区域已击破: 不可攻打(100%攻破的收尾由scan_area的全体击破判定负责)
-        if self.appear(f3, threshold=0.8) or self.appear(f4, threshold=0.8):
+        if any(self.appear(f, threshold=0.8) for f in finished_signs):
             logger.info('Area [%s] is finished, skip.' % str(index + 1))
             return False
         # 如果该区域攻略失败返回 False
-        if self.appear(f1, threshold=0.8) or self.appear(f2, threshold=0.8):
+        if any(self.appear(f, threshold=0.8) for f in fail_signs):
             logger.info('Area [%s] is futile attack, skip.' % str(index + 1))
             return False
         return True
@@ -297,15 +298,15 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
         image = self.device.image
         finished_count = 0
         for i in range(len(area_map)):
-            f1, f2 = area_map[i].get("fail_sign")
-            f3, f4 = area_map[i].get("finished_sign")
+            fail_signs = area_map[i].get("fail_sign")
+            finished_signs = area_map[i].get("finished_sign")
             # 该区域已击破: 跳过, 自动往下一个找(保留原游标行为, 不得直接结束任务)
-            if f3.match(image, threshold=0.8) or f4.match(image, threshold=0.8):
+            if any(f.match(image, threshold=0.8) for f in finished_signs):
                 logger.info('Area [%s] is finished, skip.' % str(i + 1))
                 finished_count += 1
                 continue
             # 该区域攻略失败: 跳过
-            if f1.match(image, threshold=0.8) or f2.match(image, threshold=0.8):
+            if any(f.match(image, threshold=0.8) for f in fail_signs):
                 logger.info('Area [%s] is futile attack, skip.' % str(i + 1))
                 continue
             return i
