@@ -150,8 +150,10 @@ class GeneralBattleAssets:
 	I_CONFIRM = RuleImage(roi_front=(732,383,83,43), roi_back=(330,228,615,286), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_confirm.png")
 	# 关闭御魂不一致提示弹窗 
 	I_CONFIRM_CLOSE_DIFF_SOUL = RuleImage(roi_front=(571,404,135,54), roi_back=(517,374,226,112), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_confirm_close_diff_soul.png")
-	# 禁用御魂不一致提示7天 
+	# 禁用御魂不一致提示7天
 	I_DISABLE_7DAYS_DIFF_SOUL = RuleImage(roi_front=(547,342,27,36), roi_back=(524,325,70,71), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_disable_7days_diff_soul.png")
+	# 御魂溢出弹窗-知道了按钮(弹窗遮挡领奖画面时点击关闭)
+	I_OVERFLOW_KNOW = RuleImage(roi_front=(688,399,105,44), roi_back=(600,380,300,90), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_overflow_know.png")
 
 
 	# Ocr Rule Assets

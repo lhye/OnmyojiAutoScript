@@ -371,7 +371,10 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         return HookSignal.CONTINUE
 
     def _bw_interrupt_default(self, bw_ctx: BattleWaitContext) -> HookSignal:
-        # 比如 御魂溢出
+        # 比如 御魂溢出: 存储满时领奖画面会被"您当前持有御魂过多"弹窗遮挡,
+        # C_REWARD连点无效直至风控(2026-10-17 error/1792232004581实锤), 点"知道了"关闭
+        if self.appear_then_click(self.I_OVERFLOW_KNOW, interval=1.5):
+            return HookSignal.CONTINUE
         return HookSignal.CONTINUE
 
     def _bw_success_default(self, bw_ctx: BattleWaitContext) -> HookSignal:
