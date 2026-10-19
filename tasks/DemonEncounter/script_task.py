@@ -413,7 +413,7 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             self.screenshot()
             if self.appear(self.I_LETTER_CLOSE):
                 break
-            if self.is_in_prepare(screenshot=False):
+            if self.is_in_prepare(is_screenshot=False):
                 logger.warning('Lantern click lead to battle prepare, switch to battle flow')
                 self._battle(target_click)
                 return
