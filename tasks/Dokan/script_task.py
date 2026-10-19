@@ -735,18 +735,25 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
     def creat_dokan(self):
         """
         找道馆前尝试建立道馆:
-        点击"建立道馆"最多2次, 若始终不弹确认框(点击无反应)说明道馆已建立, 直接跳过;
+        点击"建立道馆"最多2次, 每次点击后等待2秒观察确认框是否弹出;
+        若两次点击后仍未弹出(点击无反应)说明道馆已建立, 直接跳过;
         弹出"确定消耗...创建道馆?"后点击"建立", 再关闭创建后弹出的道馆信息窗口
         :return:
         """
         # 点击"建立道馆", 最多2次
+        # 每次点击后必须给确认框留出弹出时间再判断: 背靠背连点会被click的interval节流吞掉,
+        # 且确认框动画未出就判"无反应"会误认为道馆已建立, 导致后续find_dokan失败而直接退出
         confirm_shown = False
         for _ in range(2):
             self.screenshot()
             if self.appear(self.I_RYOU_DOKAN_CREATE_DOKAN_ENSURE):
                 confirm_shown = True
                 break
-            self.click(self.I_RYOU_DOKAN_CREATE_DOKAN, interval=2)
+            self.click(self.I_RYOU_DOKAN_CREATE_DOKAN)
+            # 等待确认框弹出
+            if self.wait_until_appear(self.I_RYOU_DOKAN_CREATE_DOKAN_ENSURE, wait_time=2):
+                confirm_shown = True
+                break
         if not confirm_shown:
             logger.info("Create Dokan: no reaction after 2 clicks, dokan already exists, skip")
             return
