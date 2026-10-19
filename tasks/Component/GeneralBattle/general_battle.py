@@ -292,6 +292,11 @@ class GeneralBattle(BattleWait, GeneralBuff):
                     if timer.reached_and_reset():
                         logger.warning('battle ')
                         break
+            elif self._battle_finish_check():
+                # 任务侧"认识界面"命中(秘闻结算推完回地图/御魂回房间, 无领奖画面):
+                # wait_result返回True后若画面无领奖资产会一直空转不点击, 60s触发GameStuckError
+                logger.info('Battle done at finish check')
+                return True
             # 随机滑动
             if random_click_swipt_enable:
                 self.random_click_swipt()

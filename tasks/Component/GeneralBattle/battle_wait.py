@@ -399,6 +399,12 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             self.appear(self.I_REWARD_GOLD_SNAKE_SKIN)
         )
         if not any([appear_ghost, appear_reward, appear_gold, appear_skin]):
+            if self._battle_finish_check():
+                # 任务侧"认识界面"命中(秘闻结算推完回地图, 无领奖画面): 收尾结束
+                # wait_result返回True后若画面无领奖资产会一直空转不点击, 60s触发GameStuckError
+                logger.info('Battle done at finish check')
+                bw_ctx.success = True
+                bw_ctx.completion = True
             return HookSignal.CONTINUE
         logger.info('Win battle')
         timer = Timer(20).start()
