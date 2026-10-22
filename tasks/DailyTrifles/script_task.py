@@ -229,15 +229,20 @@ class ScriptTask(GameUi, Summon, DailyTriflesAssets):
     def run_store_sign(self):
 
         self.ui_goto_page(page_store_gift_room)
-        self.screenshot()
-        self.appear_then_click(self.I_GIFT_RECOMMEND, interval=1)
-        logger.info('Enter store sign')
-        sleep(1)  # 等个动画
-        self.screenshot()
-        if not self.appear(self.I_GIFT_SIGN):
+        # 切到“日常”页签后签到图标有加载/淡入动画, 原来单次点击 + 1s 判断会漏(日志里只有 0.55 分)
+        # 改为循环点页签并持续观察签到图标, 直到出现或超时
+        timer = Timer(10).start()
+        while not timer.reached():
+            self.screenshot()
+            if self.appear(self.I_GIFT_SIGN):
+                break
+            self.appear_then_click(self.I_GIFT_RECOMMEND, interval=1)
+            sleep(0.5)
+        else:
             logger.warning('There is no gift sign')
             return
 
+        logger.info('Enter store sign')
         if self.ui_get_reward(self.I_GIFT_SIGN, click_interval=2.5):
             logger.info('Get reward of gift sign')
 
