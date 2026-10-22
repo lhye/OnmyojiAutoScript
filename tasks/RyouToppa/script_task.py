@@ -5,6 +5,8 @@ import time
 from datetime import datetime, timedelta, time as dt_time
 import random
 
+import cv2
+
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.RyouToppa.assets import RyouToppaAssets
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
