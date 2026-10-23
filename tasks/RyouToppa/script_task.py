@@ -5,8 +5,6 @@ import time
 from datetime import datetime, timedelta, time as dt_time
 import random
 
-import cv2
-
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.RyouToppa.assets import RyouToppaAssets
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
@@ -78,10 +76,6 @@ def random_delay(min_value: float = 1.0, max_value: float = 2.0, decimal: int = 
 
 class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
     medal_grid: ImageGrid = None
-    # 区域列表单行高度(px): area1~8点击y间距约131, 滑动按整行移动以保持8个ROI与卡片对位
-    AREA_ROW_HEIGHT: int = 131
-    # 向上滑动的最大次数, 防止没有更多目标时无限滑
-    AREA_LIST_MAX_PAGES: int = 10
 
     def run(self):
         """
@@ -162,16 +156,13 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
             self.ui_click(self.I_TOPPA_LOCK_TEAM, self.I_TOPPA_UNLOCK_TEAM)
         # --------------------------------------------------------------------------------------------------------------
         # 开始突破: 完成1次战斗后回到选择界面重新扫描重算index;
-        # 选中的区域进不了战斗(目标被寮友打掉等)时游标+1选下一个;
-        # 当前页8个都点完仍进不去战斗, 就点住列表往上滑, 继续点后面的目标;
-        # 滑到底仍没有任何能进战斗的目标才视为任务结束, 不再刷新对手
+        # 选中的区域进不了战斗(目标被寮友打掉/挑战失败)时游标+1选下一个;
+        # 区域已击破或攻略失败都不可进攻; 列表顶部已没有可进攻目标即结束任务
         # --------------------------------------------------------------------------------------------------------------
         success = True
         need_scan = True   # 首次进入/每次战斗结束后重新扫描
         cursor = 0
-        tried = set()      # 当前页已尝试过但进不了战斗的区域
-        page = 0           # 已向上滑动的页数(0=列表顶部)
-        futile_round = 0   # 整个列表都进不了战斗的轮数(异常态, 与"已无目标"区分)
+        tried = set()      # 已尝试过但进不了战斗的区域
         while 1:
             self.screenshot()
             # 阈值0.8: 个人突破页对 breakthrough记录徽章有~0.7假分, 0.6会误放行
@@ -192,28 +183,11 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
                 logger.warning("We have attacked the limit time.")
                 break
             if need_scan:
-                # 重新识别当前页8个区域状态(跳过已击破/攻略失败/本页已试过), 计算可攻打的区域
+                # 重新识别当前页8个区域状态(跳过已击破/攻略失败/已试过), 计算可攻打的区域
                 index = self.scan_area(exclude=tried)
                 if index == -1:
-                    # 当前页没有可打目标: 点住列表往上滑, 继续找后面的目标
-                    if page < self.AREA_LIST_MAX_PAGES and self.swipe_area_list():
-                        logger.info(f'No attackable area in page {page + 1}, swipe up to next page')
-                        page += 1
-                        tried.clear()
-                        cursor = 0
-                        continue
-                    # 已滑到底(或列表不能滑动): 回到顶部再确认一轮, 仍无可打目标才结束
-                    futile_round += 1
-                    if page == 0 or futile_round >= 2:
-                        logger.info('All areas are finished or futile, task complete')
-                        break
-                    logger.info(f'No attackable area in whole list, wait 10s and rescan ({futile_round}/2)')
-                    time.sleep(10)
-                    self.rewind_area_list(page)
-                    page = 0
-                    tried.clear()
-                    cursor = 0
-                    continue
+                    logger.info('No attackable area at the top of list, task complete')
+                    break
                 cursor = index
                 need_scan = False
             # 进攻
@@ -226,11 +200,10 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
                 # 无法进战斗: 游标+1直接试下一个区域
                 cursor += 1
                 if cursor >= len(area_map):
-                    # 本页8个都进不去战斗, 下一轮扫描(没有可打的会自动往上滑动)
+                    # 8个区域都进不去战斗, 下一轮扫描返回 -1 后结束
                     need_scan = True
                     continue
             else:
-                futile_round = 0
                 # 完成1次战斗(胜/败), 回到选择界面重新扫描重算index
                 tried.clear()
                 need_scan = True
@@ -343,33 +316,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RyouToppaAssets):
                 continue
             return i
         return -1
-
-    def swipe_area_list(self) -> bool:
-        """
-        在区域列表上点住往上滑(2行), 露出后面的目标
-        :return: 滑动后画面是否变化; False 表示已滑到底, 没有更多目标
-        """
-        # 先点左侧安全区域收起可能残留的结界师弹窗, 避免滑动被弹窗吃掉
-        self.click(self.C_SAFE_AREA, interval=1)
-        self.screenshot()
-        before = self.device.image.copy()
-        # 在右侧列拖动(弹窗不会覆盖到这里), 慢速拖动以减少惯性导致的行错位
-        self.device.swipe_adb((1050, 560), (1050, 560 - self.AREA_ROW_HEIGHT * 2), duration=0.6)
-        time.sleep(1.5)
-        self.screenshot()
-        diff = cv2.absdiff(before[120:660, 400:1100], self.device.image[120:660, 400:1100]).mean()
-        logger.info(f'Area list swipe up, diff={diff:.2f}')
-        return diff > 5
-
-    def rewind_area_list(self, pages: int):
-        """
-        从列表当前位置滑回顶部
-        :param pages: 已向下滑动的页数
-        """
-        for _ in range(pages + 1):
-            self.device.swipe_adb((1050, 560 - self.AREA_ROW_HEIGHT * 2), (1050, 560), duration=0.6)
-            time.sleep(1)
-        logger.info('Area list rewound to top')
 
     def flush_area_cache(self):
         time.sleep(2)
