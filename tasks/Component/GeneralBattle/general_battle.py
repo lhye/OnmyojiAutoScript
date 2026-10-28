@@ -257,19 +257,15 @@ class GeneralBattle(BattleWait, GeneralBuff):
             )
             if appear_ghost or appear_reward or appear_gold:
                 logger.info('Win battle')
-                # 领奖点击避开物品格子: 点到物品只弹详情面板, 该次点击被吞掉不推进结算,
-                # 连点物品列最终触发 GameTooManyClickError 风控重启(2026-10-22 error/1792620327301)
-                reward_click = self.reward_exclude_click_2(self.exclude_button_stage_2)
+                # 领奖画面只能点达摩/“点击屏幕继续”: 随机点落到物品格上只会弹出物品详情,
+                # 而详情面板开着时点达摩仅够关闭面板 → 两类点击互相抵消, 结算永远不推进,
+                # 最终触发device的“两按钮交替6次”守卫重启(2026-10-24 06:25、2026-10-25 06:20 实锤)
                 timer = Timer(20).start()
                 confirm_count = 0
                 while 1:
                     self.screenshot()
 
-                    # 点到了具体奖励会弹出物品详细描述(含"获取途径"), 先点掉详情面板再继续领奖
-                    if self.appear(self.I_END_FIX_1) or self.appear(self.I_END_FIX_2):
-                        self.click(self.C_REWARD_2, interval=1.5)
-                        continue
-                    # 御魂仓库满时领奖画面被"当前持有御魂过多"弹窗遮挡, 连点 C_REWARD 无效直至风控
+                    # 御魂仓库满时领奖画面被“当前持有御魂过多”弹窗遮挡, 连点无效直至风控
                     if self.appear_then_click(self.I_OVERFLOW_KNOW, interval=1.5):
                         continue
 
@@ -281,13 +277,17 @@ class GeneralBattle(BattleWait, GeneralBuff):
                     # logger.info(f'_appear_ghost: {_appear_ghost} _appear_reward: {_appear_reward} _appear_gold: {_appear_gold}')
                     if any([_appear_ghost, _appear_reward, _appear_gold]):
                         confirm_count = 0
-                        self.click(reward_click, interval=1.5)
+                        # 有界探测(20s Timer), 不是死循环: 清空点击记录避免“同一按钮10次”风控误报
+                        self.device.click_record_clear()
+                        # 优先点识别到的达摩(“点击屏幕继续”), 位置随画面自适应;
+                        # 达摩下半部分在物品详情面板之外, 面板打开时这一下能关掉面板, 已关闭时直接推进结算
+                        self.click(self.I_REWARD if _appear_reward else self.C_REWARD_1, interval=1.5)
                     elif self._battle_finish_check():
-                        # 任务侧"认识界面"命中(御魂回房间/秘闻回地图等): 结算彻底结束
+                        # 任务侧“认识界面”命中(御魂回房间/秘闻回地图等): 结算彻底结束
                         logger.info('Battle done at finish check')
                         return True
                     elif confirm_count < 3:
-                        # 三资产消失≠结算结束: 御魂组队领奖后还有战利品锦囊等"点击屏幕继续"过渡画面
+                        # 三资产消失≠结算结束: 御魂组队领奖后还有战利品锦囊等“点击屏幕继续”过渡画面
                         # (I_REWARD/GHOST/GOLD全不命中), 继续点底部空白区点掉过渡画面;
                         # 队员首次回庭院无房间标志, 连续3轮(约4.5s)无资产兜底结束(庭院空白点击无害)
                         confirm_count += 1
