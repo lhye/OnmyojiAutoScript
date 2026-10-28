@@ -665,6 +665,10 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
             if self.is_in_room(is_screenshot=False):
                 if self.timer_emoji.reached():
                     self.timer_emoji.reset()
+                    # 表情按钮点开的是表情面板, 面板没有可识别资产, 每15s重复点同一按钮
+                    # 会触发device的“同一按钮10次”守卫重启(2026-10-24 06:27 error/1792794467109 实锤);
+                    # 这是等待期内的有界周期操作, 清空点击记录避免风控误报
+                    self.device.click_record_clear()
                     self.appear_then_click(self.I_GI_EMOJI_1)
                     self.appear_then_click(self.I_GI_EMOJI_2)
             else:
