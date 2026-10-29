@@ -1,8 +1,8 @@
 [
   {
     "itemName": "wq_invite_column_1",
-    "roiFront": "240,185,190,340",
-    "roiBack": "240,185,190,340",
+    "roiFront": "240,185,188,275",
+    "roiBack": "240,185,188,275",
     "mode": "FULL",
     "method": "Default",
     "keyword": "",
@@ -10,8 +10,8 @@
   },
   {
     "itemName": "wq_invite_column_2",
-    "roiFront": "520,185,190,340",
-    "roiBack": "520,185,190,340",
+    "roiFront": "538,185,182,275",
+    "roiBack": "538,185,182,275",
     "mode": "FULL",
     "method": "Default",
     "keyword": "",
