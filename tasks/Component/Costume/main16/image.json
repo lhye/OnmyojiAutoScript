@@ -29,8 +29,8 @@
   {
     "itemName": "main_goto_town_16",
     "imageName": "main16_main_goto_town_16.png",
-    "roiFront": "1014,346,14,34",
-    "roiBack": "960,300,100,120",
+    "roiFront": "1013,340,18,40",
+    "roiBack": "985,320,90,95",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "町中"
