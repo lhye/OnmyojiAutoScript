@@ -38,7 +38,7 @@ class KekkaiUtilizeAssets:
 
 	# Image Rule Assets
 	# 育成 
-	I_SHI_GROWN = RuleImage(roi_front=(595,291,35,38), roi_back=(560,250,130,220), threshold=0.6, method="Template matching", file="./tasks/KekkaiUtilize/realm/realm_shi_grown.png")
+	I_SHI_GROWN = RuleImage(roi_front=(595,291,35,38), roi_back=(530,220,202,267), threshold=0.6, method="Template matching", file="./tasks/KekkaiUtilize/realm/realm_shi_grown.png")
 	# 结界卡 
 	I_SHI_CARD = RuleImage(roi_front=(891,300,31,55), roi_back=(760,250,220,220), threshold=0.6, method="Template matching", file="./tasks/KekkaiUtilize/realm/realm_shi_card.png")
 	# description 
@@ -50,7 +50,7 @@ class KekkaiUtilizeAssets:
 	# 收取盒子的经验（没有满） 
 	I_BOX_EXP = RuleImage(roi_front=(893,440,41,64), roi_back=(875,285,255,240), threshold=0.7, method="Template matching", file="./tasks/KekkaiUtilize/realm/realm_box_exp.png")
 	# 结界皮肤 
-	I_REALM_SHIN = RuleImage(roi_front=(175,460,54,58), roi_back=(140,270,270,285), threshold=0.9, method="Multi-scale template matching", file="./tasks/KekkaiUtilize/realm/realm_realm_shin.png")
+	I_REALM_SHIN = RuleImage(roi_front=(175,460,54,58), roi_back=(22,359,393,328), threshold=0.9, method="Multi-scale template matching", file="./tasks/KekkaiUtilize/realm/realm_realm_shin.png")
 	# 寄养别人的经验 
 	I_UTILIZE_EXP = RuleImage(roi_front=(583,144,58,43), roi_back=(500,65,220,280), threshold=0.8, method="Template matching", file="./tasks/KekkaiUtilize/realm/realm_utilize_exp.png")
 	# 取出 
