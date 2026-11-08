@@ -312,7 +312,105 @@ class battle_wait_strategy:
         return self
 
 
+# ------------------------------------------------------------------------------------------------------------------
+# dev 兼容层
+# dev 把战斗等待重构为「事件 -> Option 数据类 + runtime」, battle.py / AreaBoss / ActivityShikigami 依赖该接口。
+# dev-1 保留自己的 options 字典实现, 这里做一层转换, 让两种调用方式都能工作。
+# ------------------------------------------------------------------------------------------------------------------
+@dataclass
+class OptionPrepareDefault:
+    lock_team: bool = False
+
+
+@dataclass
+class OptionPresetDefault:
+    preset_enable: bool = False
+    preset_group: int = 1
+    preset_team: int = 1
+
+
+@dataclass
+class OptionGreenDefault:
+    green_enable: bool = False
+    green_mark = None
+    green_mark_type = None
+    green_mark_name: str = ''
+
+
+@dataclass
+class OptionRandomclickDefault:
+    start_delay: float = 0
+    cooldown: float = 0
+    trigger_probability: float = 0.0
+    execution_limit: int = 0
+
+
+@dataclass
+class OptionSuccessDefault:
+    excludes_1: list = None
+    excludes_2: list = None
+
+
+def _option_to_dict(event: str, option) -> dict:
+    """
+    把 dev 的 Option 数据类转换成 dev-1 使用的 options 字典
+    """
+    if isinstance(option, dict):
+        return option
+    if event == 'success' and isinstance(option, OptionSuccessDefault):
+        excludes = option.excludes_1 if option.excludes_1 is not None else option.excludes_2
+        return {'excludes': excludes} if excludes is not None else {}
+    return dict(vars(option)) if hasattr(option, '__dict__') else {}
+
+
+class battle_wait_options:
+    """
+    dev 接口: with battle_wait_strategy(**strategies), battle_wait_options(**options): ...
+    把 Option 数据类注入 battle_wait_strategy.options, 退出时还原
+    """
+
+    options: dict = {}
+
+    def __init__(self, **kwargs):
+        self._raw_options = kwargs
+
+    def __enter__(self):
+        self._previous_options = battle_wait_strategy.options
+        merged = dict(self._previous_options or {})
+        for event, option in self._raw_options.items():
+            merged[event] = _option_to_dict(event, option)
+        battle_wait_strategy.options = merged
+        return self
+
+    def __exit__(self, *exc):
+        battle_wait_strategy.options = self._previous_options
+        return False
+
+
+class runtime:
+    """
+    dev 接口的最小兼容实现: dev-1 的任务级战斗计数由 BaseTask.current_count 维护
+    """
+
+    pub_ctx = None
+
+    @classmethod
+    def reset_per_task(cls):
+        return None
+
+    @classmethod
+    def reset_per_battle(cls):
+        return None
+
+
 class BattleWait(BaseTask, GeneralBattleAssets):
+
+    @classmethod
+    def loadout_default(cls) -> tuple[dict, dict]:
+        """
+        dev 接口兼容: 默认策略与 options 都为空, 使用 dev-1 的 plan/options 默认值
+        """
+        return {}, {}
 
     # ------------------------------------------------------------------------------------------------------------------
     @cached_property
