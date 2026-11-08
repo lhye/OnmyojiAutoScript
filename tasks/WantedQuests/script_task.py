@@ -1,6 +1,7 @@
 # This Python file uses the following encoding: utf-8
 # @author runhey
 # github https://github.com/runhey
+from copy import copy
 from datetime import timedelta, time, datetime
 from time import sleep
 from typing import List
@@ -23,6 +24,19 @@ from tasks.WantedQuests.config import CooperationType, CooperationSelectMask
 from tasks.WantedQuests.explore import WQExplore, ExploreWantedBoss
 
 
+def _read_location_info(rule: RuleOcr, image):
+    # https://github.com/runhey/OnmyojiAutoScript/pull/2006
+    pattern = r"^(.*?)[（(]?数量[：:]\s*(\d+)[)）]"
+    match = re.match(pattern, rule.ocr(image))
+    if match and match.group(1):
+        return match
+    # 数量可能被单行 OCR 漏读；只收紧上下留白，保留完整地点名。
+    retry = copy(rule)
+    x, y, w, h = rule.roi
+    retry.roi = [x, y + 7, w, h - 14]
+    return re.match(pattern, retry.ocr(image))
+
+
 class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
     want_strategy_excluding: list[list] = []  # 不需要执行的
     # 追踪界面(显示"前往"按钮的界面,左上角位置,神秘任务不好使)显示以下名称时,任务不再执行
@@ -37,12 +51,10 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
 
         # 自动换御魂
         if con.switch_soul_config.enable:
-            self.ui_get_current_page()
-            self.ui_goto(page_shikigami_records)
+            self.goto_page(page_shikigami_records)
             self.run_switch_soul(con.switch_soul_config.switch_group_team)
         if con.switch_soul_config.enable_switch_by_name:
-            self.ui_get_current_page()
-            self.ui_goto(page_shikigami_records)
+            self.goto_page(page_shikigami_records)
             self.run_switch_soul_by_name(con.switch_soul_config.group_name, con.switch_soul_config.team_name)
 
         preSuc = False
@@ -126,8 +138,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         前置工作，
         :return:
         """
-        self.ui_get_current_page()
-        self.ui_goto(page_main)
+        self.goto_page(page_main)
         done_timer = Timer(5)
         while 1:
             self.screenshot()
@@ -159,13 +170,13 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             else:
                 self.invite_five()
         self.ui_click_until_disappear(self.I_UI_BACK_RED)
-        self.ui_goto(page_exploration)
+        self.goto_page(page_exploration)
         return True
 
     def pre_work_cooperation_only(self):
         #
-        if self.ui_get_current_page() != page_main:
-            self.ui_goto(page_main)
+        if self.get_current_page() != page_main:
+            self.goto_page(page_main)
         # 打开悬赏封印 界面
         done_timer = Timer(5)
         while 1:
@@ -201,7 +212,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         self.all_cooperation_invite()
 
         self.ui_click_until_disappear(self.I_UI_BACK_RED)
-        self.ui_goto(page_exploration)
+        self.goto_page(page_exploration)
         return True
 
     def trace_one(self, btn: RuleImage):
@@ -228,7 +239,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             # 防止点击后界面来不及刷新
             sleep(1.5)
         # 关闭单个任务的追踪界面
-        self.ui_click_until_smt_disappear(self.C_WQ_TRACE_ONE_CLOSE, stop=self.I_WQ_TRACE_ONE_CHECK_OPENED,
+        self.ui_click_until_smt_disappear(self.I_UI_BACK_RED, stop=self.I_WQ_TRACE_ONE_CHECK_OPENED,
                                           interval=1.5)
 
     def execute_mission(self, ocr, num_want: int, num_challenge: int):
@@ -272,11 +283,8 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             # ,荒川之怒·壹，4，前往按钮，function
             result = [-1, '', -1, GOTO_BUTTON[index], self.challenge, '']
             type_wq = OCR_WQ_TYPE[index].ocr(self.device.image)
-            info_wq_1 = OCR_WQ_INFO[index].ocr(self.device.image)
-            info_wq_1 = info_wq_1.replace('：', ':').replace('（', '(').replace('）', ')')
-            info_wq_1 = info_wq_1.replace('：', ':')
-            match = re.match(r"^(.*?)[（(]?数量[：:]\s*(\d+)[)）]", info_wq_1)
-            if not match:
+            match = _read_location_info(OCR_WQ_INFO[index], self.device.image)
+            if not match or not match.group(1):
                 return None
             wq_destination = match.group(1)
             wq_number = int(match.group(2))
@@ -311,7 +319,8 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             return False
         # 跳过不想打的
         monster_name = self.O_WQ_MONSTER_TYPE.detect_text(self.device.image)
-        if monster_name in self.unwanted_boss_name_list:
+        # 识别串可能带前缀动词(如需要击败/击杀), 用子串包含匹配而非整串相等
+        if any(name in monster_name for name in self.unwanted_boss_name_list):
             #
             logger.warning(f'unwanted {monster_name}')
             self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
@@ -386,8 +395,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 continue
             if self.appear_then_click(self.I_UI_BACK_BLUE, interval=1.5):
                 continue
-        self.ui_get_current_page()
-        self.ui_goto(page_exploration)
+        self.goto_page(page_exploration)
         self.wait_until_stable(self.I_CHECK_EXPLORATION)
         logger.info('Secret mission finished')
 

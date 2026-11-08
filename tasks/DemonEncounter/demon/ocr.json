@@ -10,9 +10,9 @@
   },
   {
     "itemName": "de_challenge_count",
-    "roiFront": "680,68,75,36",
-    "roiBack": "680,68,75,36",
-    "mode": "Full",
+    "roiFront": "705,68,45,36",
+    "roiBack": "705,68,45,36",
+    "mode": "DigitCounter",
     "method": "Default",
     "keyword": "",
     "description": "现世逢魔顶部今日挑战次数X/1的最小识别区, 0/1表示已打过直接结束"

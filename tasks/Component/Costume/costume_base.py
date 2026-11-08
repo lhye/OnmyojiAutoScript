@@ -3,14 +3,21 @@
 # github https://github.com/runhey
 
 from module.atom.image import RuleImage
+from module.atom.gif import RuleGif
 from module.logger import logger
+from module.server.i18n import I18n
 
-from tasks.Component.Costume.config import (MainType, CostumeConfig, RealmType,
-                                            ThemeType, ShikigamiType, SignType, BattleType, CarpBannerType)
+from tasks.Component.Costume.config import (
+    MainType, CostumeConfig, RealmType,
+    ThemeType, ShikigamiType, SignType,
+    BattleType, BattleSceneType, CarpBannerType
+)
 from tasks.Component.Costume.assets import CostumeAssets
+from tasks.Component.CostumeTheme.theme import apply_theme
 from tasks.Component.CostumeBattle.assets import CostumeBattleAssets
 from tasks.Component.CostumeShikigami.assets import CostumeShikigamiAssets
 from tasks.Component.CostumeCarpBanner.assets import CostumeCarpBannerAssets
+from tasks.Component.CostumeBattleScene.assets import CostumeBattleSceneAssets
 
 # 庭院皮肤
 # 主界面皮肤（使用字典推导式动态生成）
@@ -23,6 +30,22 @@ main_costume_model = {
         'I_PET_HOUSE': f'I_PET_HOUSE_{i}'
     } for i in range(1, 17)
 }
+# 玉岚狐庭（issue #1824）
+main_costume_model[getattr(MainType, "COSTUME_MAIN_17")] = {
+    'I_CHECK_MAIN': ['I_CHECK_MAIN_17_A', 'I_CHECK_MAIN_17_B', 'I_CHECK_MAIN_17_C'],
+    'I_MAIN_GOTO_EXPLORATION': ['I_MAIN_GOTO_EXPLORATION_17_A', 'I_MAIN_GOTO_EXPLORATION_17_B', 'I_MAIN_GOTO_EXPLORATION_17_C'],
+    'I_MAIN_GOTO_SUMMON': ['I_MAIN_GOTO_SUMMON_17_A', 'I_MAIN_GOTO_SUMMON_17_B', 'I_MAIN_GOTO_SUMMON_17_C'],
+    'I_MAIN_GOTO_TOWN': ['I_MAIN_GOTO_TOWN_17_A', 'I_MAIN_GOTO_TOWN_17_B', 'I_MAIN_GOTO_TOWN_17_C'],
+    'I_PET_HOUSE': ['I_PET_HOUSE_17_A', 'I_PET_HOUSE_17_B', 'I_PET_HOUSE_17_C'],
+}
+main_costume_model[getattr(MainType, "COSTUME_MAIN_13")] = {
+    'I_CHECK_MAIN': ['I_CHECK_MAIN_13',],
+    'I_MAIN_GOTO_EXPLORATION': ['I_MAIN_GOTO_EXPLORATION_13', ],
+    'I_MAIN_GOTO_SUMMON': ['I_MAIN_GOTO_SUMMON_13',],
+    'I_MAIN_GOTO_TOWN': ['I_MAIN_GOTO_TOWN_13',],
+    'I_PET_HOUSE': ['I_PET_HOUSE_13',],
+}
+
 
 
 # 鲤鱼旗皮肤
@@ -49,6 +72,13 @@ battle_theme_model = {
     } for i in range(1, 16)
 }
 
+# 战斗场景皮肤。图片资源待补充，先保留空映射。
+battle_scene_model = {
+    BattleSceneType.COSTUME_BATTLE_SCENE_1: {
+        'I_REWARD': 'I_REWARD_1',
+    },
+}
+
 # 幕间主题
 shikigami_costume_model = {
     getattr(ShikigamiType, f"COSTUME_SHIKIGAMI_{i}"): {
@@ -60,7 +90,6 @@ shikigami_costume_model = {
         'I_SOU_CHECK_IN': f'I_SOU_CHECK_IN_{i}',
         'I_SOU_TEAM_PRESENT': f'I_SOU_TEAM_PRESENT_{i}',
         'I_SOU_CLICK_PRESENT': f'I_SOU_CLICK_PRESENT_{i}',
-        'I_SOU_SWITCH_SURE': f'I_SOU_SWITCH_SURE_{i}',
         # SwitchSoul 分组相关 (1-7组)
         **{f'I_SOU_CHECK_GROUP_{g}': f'I_SOU_CHECK_GROUP_{g}_{i}' for g in range(1, 8)},
         # SwitchSoul 队伍相关 (1-4队)
@@ -69,17 +98,31 @@ shikigami_costume_model = {
         'I_ST_SOULS': f'I_ST_SOULS_{i}',
         'I_ST_REPLACE': f'I_ST_REPLACE_{i}',
     }
-    for i in range(1, 13)  # 目前支持 COSTUME_SHIKIGAMI_1 到 COSTUME_SHIKIGAMI_12
+    for i in range(1, 14)  # 目前支持 COSTUME_SHIKIGAMI_1 到 COSTUME_SHIKIGAMI_13
 }
 
 class CostumeBase:
     def check_costume(self, config: CostumeConfig=None):
         if config is None:
             config: CostumeConfig = self.config.model.global_game.costume_config
+        current_task = self.get_task_name()
+        logger.info(f'Current task: {current_task}')
         self.check_costume_main(config.costume_main_type)
         self.check_costume_carpbanner(config.costume_carpbanner_type)
         self.check_costume_battle(config.costume_battle_type)
+        self.check_costume_battle_scene(config.costume_battle_scene_type)
         self.check_costume_shikigami(config.costume_shikigami_type)
+        self.check_costume_theme(config.costume_theme_type)
+
+    def check_costume_theme(self, theme_type: ThemeType):
+        apply_theme(theme_type)
+        if theme_type != ThemeType.COSTUME_THEME_DEFAULT:
+            # Supplementary labels are available before the UI rebuilds its translations.
+            labels = I18n.load_additions().get('zh-CN', {})
+            theme_name = labels.get(theme_type.value)
+            if not theme_name:
+                theme_name = I18n.trans_zh_cn(theme_type)
+            logger.info(f'Switch menu theme {theme_type} ({theme_name})')
 
     def replace_img(self,
                     asset_before: str,
@@ -89,25 +132,38 @@ class CostumeBase:
             return
         # setattr(self, asset_before, asset_after)
         asset_before_object: RuleImage = getattr(self, asset_before)
-        asset_before_object.roi_front = asset_after.roi_front
+        asset_before_object.roi_front = list(asset_after.roi_front)
         if rp_roi_back:
             asset_before_object.roi_back = asset_after.roi_back
         asset_before_object.threshold = asset_after.threshold
         asset_before_object.file = asset_after.file
+        asset_before_object.method = asset_after.method
+        # A cached dispatch flag must not retain the previous skin's method.
+        for name in ('is_template_match', 'is_masked_template_match',
+                     'is_multi_scale_template_match', 'is_sift_flann'):
+            asset_before_object.__dict__.pop(name, None)
+        # https://github.com/runhey/OnmyojiAutoScript/issues/1972
+        asset_before_object.refresh()
 
     def check_costume_main(self, main_type: MainType):
         if main_type == MainType.COSTUME_MAIN:
             return
-        logger.info(f'Switch main costume to {main_type}')
+        logger.info(f'Switch main costume to {main_type} ({I18n.trans_zh_cn(main_type)})')
         costume_assets = CostumeAssets()
         for key, value in main_costume_model[main_type].items():
-            assert_value: RuleImage = getattr(costume_assets, value)
-            self.replace_img(key, assert_value)
+            if isinstance(value, list):
+                if not hasattr(self, key):
+                    continue
+                rules: list[RuleImage] = [getattr(costume_assets, item) for item in value]
+                RuleGif.attach_to(getattr(self, key), rules)
+            else:
+                assert_value: RuleImage = getattr(costume_assets, value)
+                self.replace_img(key, assert_value)
 
     def check_costume_carpbanner(self, carpbanner_type: CarpBannerType):
         if carpbanner_type == CarpBannerType.COSTUME_CARPBANNER_DEFAULT:
             return
-        logger.info(f'Switch carp banner theme {carpbanner_type} (override realm assets)')
+        logger.info(f'Switch carp banner theme {carpbanner_type} (override realm assets) ({I18n.trans_zh_cn(carpbanner_type)})')
         carpbanner_assets = CostumeCarpBannerAssets()
         model = carpbanner_costume_model.get(carpbanner_type, {})
         for key, value in model.items():
@@ -126,7 +182,7 @@ class CostumeBase:
             logger.info('Switch battle theme to universal (OCR fallback)')
             self._universal_battle = True
             return
-        logger.info(f'Switch battle theme {battle_type}')
+        logger.info(f'Switch battle theme {battle_type} ({I18n.trans_zh_cn(battle_type)})')
         costume_battle_assets = CostumeBattleAssets()
         for key, value in battle_theme_model[battle_type].items():
             if not hasattr(costume_battle_assets, value):
@@ -139,10 +195,29 @@ class CostumeBase:
             else:
                 self.replace_img(key, assert_value)
 
+    def check_costume_battle_scene(self, scene_type: BattleSceneType):
+        if scene_type == BattleSceneType.COSTUME_BATTLE_SCENE_DEFAULT:
+            return
+        logger.info(f'Switch battle scene skin {scene_type} ({I18n.trans_zh_cn(scene_type)})')
+        current_task = self.get_task_name()
+        allowed_tasks = {
+            'Orochi',
+        }
+        if current_task not in allowed_tasks:
+            return
+
+        costume_assets = CostumeBattleSceneAssets()
+        for key, value in battle_scene_model.get(scene_type, {}).items():
+            if not hasattr(costume_assets, value):
+                # 尚未采集完成的资产，跳过
+                continue
+            assert_value: RuleImage = getattr(costume_assets, value)
+            self.replace_img(key, assert_value)
+
     def check_costume_shikigami(self, shikigami_type: ShikigamiType):
         if shikigami_type == ShikigamiType.COSTUME_SHIKIGAMI_DEFAULT:
             return
-        logger.info(f'Switch shikigami theme {shikigami_type}')
+        logger.info(f'Switch shikigami theme {shikigami_type} ({I18n.trans_zh_cn(shikigami_type)})')
         shikigami_assets = CostumeShikigamiAssets()
         model = shikigami_costume_model.get(shikigami_type, {})
         for key, value in model.items():
@@ -156,4 +231,4 @@ class CostumeBase:
 
 if __name__ == '__main__':
     c = CostumeBase()
-    c.check_costume_main(MainType.COSTUME_MAIN_2)
+    c.check_costume_main(MainType.COSTUME_MAIN_13)

@@ -6,9 +6,11 @@ from datetime import datetime
 import requests
 import re
 import json
+from pathlib import Path
 
-from module.exception import TaskEnd
+from module.exception import GameStuckError, TaskEnd
 from module.logger import logger
+from module.atom.click import RuleClick
 from module.atom.image import RuleImage
 from module.base.timer import Timer
 
@@ -19,17 +21,91 @@ from tasks.Component.GeneralBattle.assets import GeneralBattleAssets
 from tasks.Component.config_base import TimeDelta
 from tasks.FrogBoss.assets import FrogBossAssets
 from tasks.FrogBoss.config import Strategy
+from tasks.FrogBoss.record_reader import read_record_rows
+from tasks.FrogBoss.frog_oas import OasHistory, fetch_predictions, fingerprint
 
 
 class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
-    def run(self):
+    @cached_property
+    def oas_history(self):
+        instance = re.sub(r'[^\w.-]', '_', self.config.config_name)
+        return OasHistory(Path('data/frog_oas') / f'{instance}.jsonl')
+
+    def record_oas_history_page(self):
+        if self.config.model.frog_boss.frog_boss_config.strategy_frog != Strategy.Oas:
+            return
+        timer = Timer(10).start()
+        while not timer.reached():
+            self.screenshot()
+            if self.appear(self.I_FROG_LOG_CHECK):
+                break
+            self.appear_then_click(self.I_FROG_LOG, interval=2)
+        else:
+            raise GameStuckError('FrogBoss record page did not open')
+        try:
+            # Read only the currently visible rows; never scroll the record page.
+            readings = []
+            for _ in range(2):
+                self.screenshot()
+                if not self.appear(self.I_FROG_LOG_CHECK):
+                    break
+                readings.append(read_record_rows(self.device.image, self))
+            if len(readings) != 2 or readings[0] != readings[1]:
+                self.oas_history.append('unverified_result', reason='unstable_record_page')
+                logger.warning('FrogBoss record page readings were not stable')
+            else:
+                for stamp, won, side in dict.fromkeys(readings[0]):
+                    result = self.oas_history.settle_record(stamp, won, selected_side=side)
+                    logger.info(f'frog_oas record result: {result}, time={stamp}, won={won}, selected={side}')
+        finally:
+            timer = Timer(10).start()
+            while not timer.reached():
+                self.screenshot()
+                if not self.appear(self.I_FROG_LOG_CHECK) and self.appear(self.I_FROG_CHECK):
+                    break
+                self.appear_then_click(self.I_FROG_LOG_CLOSE, interval=2)
+            else:
+                raise GameStuckError('FrogBoss record page did not close')
+
+    def enter_frog_boss(self):
+        self.screenshot()
+        if self.appear(self.I_FROG_CHECK) or self.appear(self.I_FROG_LOG_CHECK):
+            return
         self.enter(self.I_FROG_BOSS_ENTER)
+        if not self.wait_until_appear(self.I_FROG_CHECK, wait_time=10):
+            raise GameStuckError('FrogBoss page not detected after entering activity')
+
+    def _try_next_competition_fallback(self, idle_timer):
+        if not self.appear(self.I_FROG_CHECK):
+            idle_timer.reset()
+            return False
+        if idle_timer.reached() and self.appear_then_click(self.I_NEXT_COMPETITION, interval=1):
+            logger.info('FrogBoss idle for 5 seconds; advance via next-competition fallback')
+            idle_timer.reset()
+            return True
+        return False
+
+    def run(self):
+        self.enter_frog_boss()
+        history_checked = False
+        idle_timer = Timer(5).start()
         # 进入主界面
         while 1:
             self.screenshot()
+            if self._try_next_competition_fallback(idle_timer):
+                continue
 
-            # 已经下注(已竞猜鼓在押注的一侧, 左右各一模板)
-            if self.appear(self.I_BETTED) or self.appear(self.I_BETTED_LEFT):
+            if not history_checked and self.config.model.frog_boss.frog_boss_config.strategy_frog == Strategy.Oas:
+                if (self.appear(self.I_FROG_LOG_CHECK) or self.appear(self.I_BETTED)
+                        or self.appear(self.I_FROG_BOSS_REST)
+                        or (self.appear(self.I_BET_LEFT) and self.appear(self.I_BET_RIGHT))):
+                    self.record_oas_history_page()
+                    history_checked = True
+                    idle_timer.reset()
+                    continue
+
+            # 已经下注
+            if self.appear(self.I_BETTED):
                 logger.info('You have betted')
                 break
             # 休息中
@@ -39,27 +115,37 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
             # 竞猜成功
             if self.appear(self.I_BET_SUCCESS):
                 logger.info('You bet win')
-                self._record_result(win=True)
+                self.detect()
                 while 1:
                     self.screenshot()
+                    if self._try_next_competition_fallback(idle_timer):
+                        continue
+                    # 下一局可能直接进入休息中，而不再显示左右投注入口。
+                    if self.appear(self.I_FROG_BOSS_REST):
+                        break
                     if self.appear(self.I_BET_LEFT) and self.appear(self.I_BET_RIGHT):
                         break
                     if self.appear_then_click(self.I_BET_SUCCESS_BOX, interval=1):
+                        idle_timer.reset()
                         continue
                     if self.appear_then_click(self.I_REWARD, interval=2):
+                        idle_timer.reset()
                         continue
                     if self.appear_then_click(self.I_NEXT_COMPETITION, interval=4):
+                        idle_timer.reset()
                         continue
                 continue
             # 竞猜失败
             if self.appear(self.I_BET_FAILURE):
                 logger.info('You bet lose')
-                self._record_result(win=False)
-                self.ui_click_until_disappear(self.I_NEXT_COMPETITION)
+                if self.ui_click_until_disappear(self.I_NEXT_COMPETITION):
+                    idle_timer.reset()
+                self.detect()
                 continue
             # 正式竞猜
             if self.appear(self.I_BET_LEFT) and self.appear(self.I_BET_RIGHT):
                 self.do_bet()
+                idle_timer.reset()
                 continue
 
         logger.info('FrogBoss end')
@@ -93,7 +179,6 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
     def do_bet(self):
         logger.hr('do bet', level=2)
         self.screenshot()
-        flag_glod_30 = 0
         count_left = self.O_LEFT_COUNT.ocr(self.device.image)
         count_right = self.O_RIGHT_COUNT.ocr(self.device.image)
         match self.config.model.frog_boss.frog_boss_config.strategy_frog:
@@ -105,82 +190,89 @@ class ScriptTask(RightActivity, FrogBossAssets, GeneralBattleAssets):
                 click_image = self.I_BET_LEFT if count_left > count_right else self.I_BET_RIGHT
             case Strategy.Dashen:
                 click_image = self.get_dashen(count_left, count_right)
+            case Strategy.Oas:
+                signature = fingerprint(self.device.image)
+                predictions = fetch_predictions(self.oas_history)
+                try:
+                    decision = self.oas_history.choose(signature, count_left, count_right, predictions)
+                except ValueError as exc:
+                    raise GameStuckError(str(exc)) from exc
+                logger.info(f'frog_oas decision: {decision}')
+                # Fetching may span a round transition; never click a stale frame.
+                self.screenshot()
+                from tasks.FrogBoss.frog_oas import same_lineup
+                if not same_lineup(signature, fingerprint(self.device.image)):
+                    raise GameStuckError('FrogBoss lineup changed while fetching predictions')
+                if not (self.appear(self.I_BET_LEFT) and self.appear(self.I_BET_RIGHT)):
+                    raise GameStuckError('FrogBoss betting closed while fetching predictions')
+                click_image = self.I_BET_LEFT if decision['side'] == 'LEFT' else self.I_BET_RIGHT
             case Strategy.AlwaysRed:
                 click_image = self.I_BET_LEFT
             case Strategy.AlwaysBlue:
                 click_image = self.I_BET_RIGHT
-            case Strategy.Follow:
-                # 跟随上局胜方, 空值默认投红
-                last = self.config.model.frog_boss.frog_boss_config.last_winner
-                click_image = self.I_BET_LEFT if last != 'right' else self.I_BET_RIGHT
             case _:
                 raise ValueError(f'Unknown bet mode: {self.config.model.frog_boss.frog_boss_config.strategy_frog}')
         logger.info(f'You strategy is {self.config.model.frog_boss.frog_boss_config.strategy_frog} and bet on {click_image}')
         self.ui_click_until_disappear(click_image)
-        gold_30_timer = Timer(10)
-        gold_30_timer.start()
-        while 1:
-            self.screenshot()
-            if self.appear(self.I_GOLD_30_CHECK):
-                break
-            if gold_30_timer.reached():
-                logger.info('Gold 30 not appear')
-                break
-            if self.appear_then_click(self.I_GOLD_30, interval=3):
-                continue
-        # 正式下注
+        self.confirm_bet()
+
+    def select_gold_30(self):
+        if not self.appear(self.I_GOLD_30):
+            return False
+        # 袋子下部的奖励图标会打开说明页，只点击匹配位置的上部袋身。
+        x, y, width, height = self.I_GOLD_30.roi_front
+        area = (x + width // 4, y + height // 8, width // 2, height // 3)
+        self.click(RuleClick(
+            roi_front=area, roi_back=area, name='FB_GOLD_30_SELECT',
+        ))
+        return True
+
+    def confirm_bet(self):
         logger.info('Formal bet')
-        while 1:
+        timer = Timer(20).start()
+        gold_selected = False
+        submit_attempts = 0
+        while not timer.reached():
             self.screenshot()
-            if self.appear(self.I_BETTED) or self.appear(self.I_BETTED_LEFT):
-                # 下注成功, 记录投注边供开奖推导校验
-                self.config.model.frog_boss.frog_boss_config.last_bet_side = \
-                    'left' if click_image == self.I_BET_LEFT else 'right'
-                self.config.save()
-                break
-            if self.appear_then_click(self.I_BET_SURE, interval=2) and flag_glod_30 == 1:
-                continue
-            if self.appear_then_click(self.I_GOLD_30, interval=2):
-                flag_glod_30 = 1
+            if self.appear(self.I_BETTED):
+                return
+            if self.appear(self.I_FROG_BOSS_REST):
+                return
+            # 弹窗后方的金额、鼓面仍能匹配，必须先处理弹窗并重新截图。
+            if self.appear(self.I_GOLD_30_CHECK):
+                logger.info('Close FrogBoss betting reward information')
+                self.click(self.C_REWARD_2, interval=2)
                 continue
             if self.appear_then_click(self.I_UI_CONFIRM, interval=2):
                 continue
             if self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=2):
                 continue
+            if not gold_selected:
+                if self.select_gold_30():
+                    gold_selected = True
+                continue
+            if submit_attempts < 3 and self.appear_then_click(self.I_BET_SURE, interval=3):
+                submit_attempts += 1
+                continue
+        raise GameStuckError(
+            f'FrogBoss betting confirmation timeout: gold_selected={gold_selected}, '
+            f'submit_attempts={submit_attempts}'
+        )
 
-    def detect(self):
+    def detect(self) -> bool:
         """
-        检测开奖画面是左边赢了还是右边赢的（红胜=左鼓写胜, 蓝胜=右鼓写胜）
-        :return: 'left' 左边赢 / 'right' 右边赢 / None 未识别
+        检测是左边赢了还是右边赢的
+        :return: True 左边赢了
         """
         if self.appear(self.I_SUCCESS_LEFT) and self.appear(self.I_FAILURE_RIGHT):
+            result = True
             logger.info('Left win')
-            return 'left'
         elif self.appear(self.I_SUCCESS_RIGHT) and self.appear(self.I_FAILURE_LEFT):
+            result = False
             logger.info('Right win')
-            return 'right'
-        return None
-
-    def _record_result(self, win: bool):
-        """
-        记录上局胜利方, Follow策略使用。
-        鼓字识别优先, 横幅推导(上局投注边+输赢)校验, 矛盾时信任鼓字。
-        """
-        cfg = self.config.model.frog_boss.frog_boss_config
-        drum = self.detect()
-        side = cfg.last_bet_side
-        banner = ''
-        if side in ('left', 'right'):
-            banner = side if win else ('right' if side == 'left' else 'left')
-        if drum and banner and drum != banner:
-            logger.warning(f'Drum result {drum} conflicts with banner result {banner}, trust drum')
-        final = drum or banner
-        if final:
-            cfg.last_winner = final
-            self.config.save()
-            logger.info(f'Last winner: {final}')
         else:
-            logger.warning('No winner detected, keep last_winner unchanged')
+            result = None
+        return result
 
     def get_bilibili(self) -> RuleImage:
         """

@@ -30,8 +30,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
 
     def run(self):
         con = self.config.kekkai_activation.activation_config
-        self.ui_get_current_page()
-        self.ui_goto(page_guild)
+        self.goto_page(page_guild)
 
         # 在寮的主界面 检查是否有收取体力或者是收取寮资金
         # self.check_guild_ap_or_assets()
@@ -58,8 +57,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
         if con.exchange_max:
             self.check_max_lv(con.shikigami_class)
         # self.back_guild()
-        self.ui_get_current_page()
-        self.ui_goto(page_main)
+        self.goto_page(page_main)
 
         raise TaskEnd('KekkaiActivation')
 
@@ -117,7 +115,10 @@ class ScriptTask(KU, KekkaiActivationAssets):
             # 不稳定太，等待动画结束
             if not card_status and not card_effect:
                 # 黄色的 ”激活“
-                if self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.95):
+                # https://github.com/runhey/OnmyojiAutoScript/issues/2013
+                if self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.95)\
+                        and self.appear(self.I_A_ACTIVATE_GRAY)\
+                        and self.I_A_ACTIVATE_YELLOW.last_score > self.I_A_ACTIVATE_GRAY.last_score:
                     continue
                 if self.appear(self.I_A_DEMOUNT):
                     # 现在在动画里面

@@ -2,7 +2,6 @@
 # @author runhey
 # github https://github.com/runhey
 from time import sleep
-import random
 import numpy as np
 
 from enum import Enum
@@ -14,7 +13,6 @@ from tasks.base_task import BaseTask
 from tasks.Component.GeneralInvite.assets import GeneralInviteAssets
 from tasks.Component.GeneralInvite.config_invite import InviteConfig, InviteNumber, FindMode
 from tasks.Component.GeneralBattle.assets import GeneralBattleAssets
-from tasks.GameUi.page import page_main
 from module.logger import logger
 
 
@@ -120,10 +118,8 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
 
             # 点击挑战
             if fire:
-                if self.click_fire():
-                    return True
-                # 开战无效(队友未接受邀请), 回到轮询等待队友就绪, 由timer_wait超时兜底
-                continue
+                self.click_fire()
+                return True
 
             if self.timer_invite and self.timer_invite.reached():
                 if is_first:
@@ -187,39 +183,27 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
         while 1:
             self.screenshot()
             if not self.is_in_room() and \
-                    not self.appear_then_click(self.I_GI_SURE, interval=0.8) and \
+                    not self.appear_then_click(self.I_UI_CONFIRM, interval=0.8) and \
                     not self.appear(self.I_BACK_YELLOW):
                 break
-            if self.appear_then_click(self.I_GI_SURE, interval=0.5):
+            if self.appear_then_click(self.I_UI_CONFIRM, interval=0.5):
                 continue
-            if not self.appear(self.I_GI_SURE) and self.appear_then_click(self.I_BACK_YELLOW, interval=0.8):
-                self.wait_until_appear(self.I_GI_SURE, wait_time=0.8)
+            if not self.appear(self.I_UI_CONFIRM) and self.appear_then_click(self.I_BACK_YELLOW, interval=0.8):
+                self.wait_until_appear(self.I_UI_CONFIRM, wait_time=0.8)
                 continue
-            if not self.appear(self.I_GI_SURE) and self.appear_then_click(self.I_BACK_YELLOW_SEA, interval=0.8):
-                self.wait_until_appear(self.I_GI_SURE, wait_time=0.8)
+            if not self.appear(self.I_UI_CONFIRM) and self.appear_then_click(self.I_BACK_YELLOW_SEA, interval=0.8):
+                self.wait_until_appear(self.I_UI_CONFIRM, wait_time=0.8)
                 continue
         return True
 
-    def click_fire(self) -> bool:
-        """
-        点击挑战按钮直到离开房间(开战生效)
-        邀请发出后队友接受前, 房间加号位变"等待中"导致fire条件误判, 点开战无效;
-        限制点击次数防止触发GameTooManyClickError(2026-09-19魂海实锤连点10次报错)
-        :return: True=开战生效已离开房间, False=多次点击无效(队友未就绪)
-        """
-        click_count = 0
+    def click_fire(self):
         while 1:
             self.screenshot()
             if not self.is_in_room(False):
-                return True
-            if click_count >= 6:
-                logger.warning('Fire clicked 6 times but still in room, wait for teammate ready')
-                return False
-            if self.appear_then_click(self.I_FIRE, interval=2, threshold=0.7):
-                click_count += 1
+                break
+            if self.appear_then_click(self.I_FIRE, interval=1, threshold=0.7):
                 continue
-            if self.appear_then_click(self.I_FIRE_SEA, interval=2, threshold=0.7):
-                click_count += 1
+            if self.appear_then_click(self.I_FIRE_SEA, interval=1, threshold=0.7):
                 continue
     @cached_property
     def room_type(self) -> RoomType:
@@ -497,6 +481,8 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
             logger.warning('Invite friend 1 failed')
         # 如果是邀请第二个人
         if config.invite_number == InviteNumber.TWO:
+            # 确定邀请前等待一段时间，避免游戏弹出邀请过快
+            sleep(3)
             success = self.invite_friend(config.friend_2, config.find_mode)
             if not success:
                 logger.warning('Invite friend 2 failed')
@@ -512,33 +498,33 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
         # 判断是否进入界面
         while 1:
             self.screenshot()
-            if self.appear(self.I_GI_SURE):
+            if self.appear(self.I_UI_CONFIRM):
                 break
         # 如果勾选了默认邀请
         if default_invite:
             logger.info('Click default invite')
             while 1:
                 self.screenshot()
-                if self.appear(self.I_I_DEFAULT):
+                if self.appear(self.I_UI_CHECK):
                     break
-                if self.appear_then_click(self.I_I_NO_DEFAULT, interval=1):
+                if self.appear_then_click(self.I_UI_UNCHECK, interval=3):
                     continue
         else:
             logger.info('Click no default invite')
             while 1:
                 self.screenshot()
-                if self.appear(self.I_I_NO_DEFAULT):
+                if self.appear(self.I_UI_UNCHECK):
                     break
-                if self.appear_then_click(self.I_I_DEFAULT, interval=1):
+                if self.appear_then_click(self.I_UI_CHECK, interval=1):
                     continue
 
         # 点击确认
         logger.info('Click invite ensure')
         while 1:
             self.screenshot()
-            if not self.appear(self.I_GI_SURE):
+            if not self.appear(self.I_UI_CONFIRM):
                 break
-            if self.appear_then_click(self.I_GI_SURE):
+            if self.appear_then_click(self.I_UI_CONFIRM):
                 continue
 
     def check_and_invite(self, default_invite: bool=True) -> bool:
@@ -547,25 +533,25 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
         :param default_invite:
         :return:
         """
-        if not self.appear(self.I_GI_SURE):
+        if not self.appear(self.I_UI_CONFIRM):
             return False
 
         if default_invite:
             # 有可能是挑战失败的
-            if self.appear(self.I_I_DEFAULT) or self.appear(self.I_I_NO_DEFAULT):
+            if self.appear(self.I_UI_CHECK) or self.appear(self.I_UI_UNCHECK):
                 logger.info('Click default invite')
                 while 1:
                     self.screenshot()
-                    if self.appear(self.I_I_DEFAULT):
+                    if self.appear(self.I_UI_CHECK):
                         break
-                    if self.appear_then_click(self.I_I_NO_DEFAULT, interval=1):
+                    if self.appear_then_click(self.I_UI_UNCHECK, interval=3):
                         continue
         # 点击确认
         while 1:
             self.screenshot()
-            if not self.appear(self.I_GI_SURE):
+            if not self.appear(self.I_UI_CONFIRM):
                 break
-            if self.appear_then_click(self.I_GI_SURE, interval=1):
+            if self.appear_then_click(self.I_UI_CONFIRM, interval=3):
                 continue
 
         return True
@@ -578,52 +564,22 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
         if not self.appear(self.I_I_ACCEPT):
             return False
         logger.info('Click accept')
-        # 接受后可能被队长秒开拉进战斗, 且队长单人速刷时战斗可能随即结束: 队员停在领奖/锦囊画面,
-        # is_in_room/I_EXIT/邀请弹窗全不命中导致本循环空转至GameStuck(2026-10-09实锤, error/1791496956646)
-        # 处理: 领奖画面直接点掉; 锦囊等无资产过渡画面有限盲点; 回庭院即停; 90s兜底超时
-        timer = Timer(90).start()
-        timer_click = Timer(1.5).start()
-        confirm_count = 0
         while 1:
             self.screenshot()
-            # 循环仍在正常推进(截图/识别), 清除stuck记录防止外层长等待误报GameStuck
-            self.device.stuck_record_clear()
             if self.is_in_room():
                 return True
-            # 被秒开拉进战斗(战斗中): 交回外层check_take_over_battle接管
+            # 被秒开
+            # https://github.com/runhey/OnmyojiAutoScript/issues/230
             if self.appear(GeneralBattleAssets.I_EXIT):
-                logger.info('Pulled into battle after accept')
                 return False
-            # 邀请弹窗按钮最优先: 队员在庭院收到邀请, 庭院判定不得先于弹窗点击(2026-10-09实锤回归)
-            if self.appear_then_click(self.I_I_NO_DEFAULT, interval=1):
+            if self.appear_then_click(self.I_UI_UNCHECK, interval=1):
                 continue
-            if self.appear_then_click(self.I_GI_SURE, interval=1):
+            if self.appear_then_click(self.I_UI_CONFIRM, interval=1):
                 continue
             if self.appear_then_click(self.I_I_ACCEPT_DEFAULT, interval=1):
                 continue
             if self.appear_then_click(self.I_I_ACCEPT, interval=1):
                 continue
-            # 回到庭院且无邀请弹窗: 房间已不存在, 交回外层等待邀请(庭院是结算终点不得盲点)
-            if self.appear(page_main.check_button):
-                logger.info('Back to page main after accept')
-                return False
-            # 领奖画面: 点掉直至回房间或庭院(外层run_general_battle对已结束的战斗只会空转, 不处理领奖)
-            if self.appear(GeneralBattleAssets.I_GREED_GHOST) or self.appear(GeneralBattleAssets.I_REWARD) \
-                    or self.appear(GeneralBattleAssets.I_REWARD_GOLD):
-                self.click(random.choice([GeneralBattleAssets.C_REWARD_1, GeneralBattleAssets.C_REWARD_2,
-                                          GeneralBattleAssets.C_REWARD_3]), interval=1.5)
-                confirm_count = 0
-                continue
-            # 战利品锦囊等"点击屏幕继续"过渡画面无固定资产: 有限盲点推进(同battle_wait兜底策略)
-            if confirm_count < 3 and timer_click.reached():
-                confirm_count += 1
-                timer_click.reset()
-                self.click(random.choice([GeneralBattleAssets.C_REWARD_1, GeneralBattleAssets.C_REWARD_2,
-                                          GeneralBattleAssets.C_REWARD_3]), interval=1.5)
-                continue
-            if timer.reached():
-                logger.warning('Accept invite wait timeout')
-                return False
         return True
 
     def wait_battle(self, wait_time: time) -> bool:
@@ -665,10 +621,6 @@ class GeneralInvite(BaseTask, GeneralInviteAssets):
             if self.is_in_room(is_screenshot=False):
                 if self.timer_emoji.reached():
                     self.timer_emoji.reset()
-                    # 表情按钮点开的是表情面板, 面板没有可识别资产, 每15s重复点同一按钮
-                    # 会触发device的“同一按钮10次”守卫重启(2026-10-24 06:27 error/1792794467109 实锤);
-                    # 这是等待期内的有界周期操作, 清空点击记录避免风控误报
-                    self.device.click_record_clear()
                     self.appear_then_click(self.I_GI_EMOJI_1)
                     self.appear_then_click(self.I_GI_EMOJI_2)
             else:

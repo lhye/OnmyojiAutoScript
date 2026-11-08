@@ -1,47 +1,74 @@
 [
   {
     "itemName": "fire",
-    "roiFront": "1120,605,80,70",
-    "roiBack": "1105,590,110,100",
+    "roiFront": "1135,599,85,49",
+    "roiBack": "1123,570,106,100",
     "mode": "Single",
     "method": "Default",
     "keyword": "挑战",
-    "description": "挑战按钮"
+    "description": "挑战"
   },
   {
     "itemName": "remain_ap",
-    "roiFront": "800,18,44,34",
-    "roiBack": "790,14,64,44",
+    "roiFront": "777,16,63,27",
+    "roiBack": "776,15,63,30",
     "mode": "Digit",
     "method": "Default",
     "keyword": "",
-    "description": "AP门票剩余数量"
+    "description": "体力的数量检测"
   },
   {
     "itemName": "remain_pass",
-    "roiFront": "1005,18,32,36",
-    "roiBack": "998,14,45,44",
+    "roiFront": "1153,24,50,29",
+    "roiBack": "1153,26,49,28",
     "mode": "Digit",
     "method": "Default",
     "keyword": "",
-    "description": "PASS门票剩余数量"
+    "description": "活动体力的剩余检测"
   },
   {
-    "itemName": "boss_fire",
-    "roiFront": "1110,575,120,75",
-    "roiBack": "1095,560,150,105",
+    "itemName": "remain_buy",
+    "roiFront": "808,531,39,42",
+    "roiBack": "808,531,39,42",
+    "mode": "DigitCounter",
+    "method": "Default",
+    "keyword": "",
+    "description": "还有多少次购买体力的机会"
+  },
+  {
+    "itemName": "remain_pass2",
+    "roiFront": "750,17,88,29",
+    "roiBack": "750,17,88,29",
+    "mode": "Digit",
+    "method": "Default",
+    "keyword": "",
+    "description": "活动票数（没有百分比）"
+  },
+  {
+    "itemName": "remain_boss",
+    "roiFront": "970,16,42,29",
+    "roiBack": "970,16,42,29",
+    "mode": "DigitCounter",
+    "method": "Default",
+    "keyword": "",
+    "description": "boss剩余攻击次数"
+  },
+  {
+    "itemName": "remain_ap100",
+    "roiFront": "922,21,112,39",
+    "roiBack": "913,8,131,62",
+    "mode": "Digit",
+    "method": "Default",
+    "keyword": "",
+    "description": "100体活动门票检测"
+  },
+  {
+    "itemName": "enter_ap100",
+    "roiFront": "73,98,95,32",
+    "roiBack": "5,79,256,108",
     "mode": "Single",
     "method": "Default",
-    "keyword": "挑战",
-    "description": "炼石成金挑战按钮"
-  },
-  {
-    "itemName": "boss_remain",
-    "roiFront": "1167,638,52,26",
-    "roiBack": "1155,630,75,42",
-    "mode": "Digit",
-    "method": "Default",
-    "keyword": "",
-    "description": "炼石成金挑战票数(x12)"
+    "keyword": "将魂试炼",
+    "description": "进入100体活动标识"
   }
 ]

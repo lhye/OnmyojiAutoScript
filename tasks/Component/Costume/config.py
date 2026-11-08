@@ -23,6 +23,7 @@ class MainType(str, Enum):
     COSTUME_MAIN_14 = 'costume_main_14'  # 雪月华庭
     COSTUME_MAIN_15 = 'costume_main_15'  # 茨心乐园
     COSTUME_MAIN_16 = 'costume_main_16'  # 狐栖归处
+    COSTUME_MAIN_17 = 'costume_main_17'  # 玉岚狐庭
 
 # 结界皮肤
 class RealmType(str, Enum):
@@ -38,6 +39,7 @@ class CarpBannerType(str, Enum):
 # 主题，就是庭院最右下角的展开按钮
 class ThemeType(str, Enum):
     COSTUME_THEME_DEFAULT = 'costume_theme_default'  # 伊始之卷
+    COSTUME_THEME_XINYU_MINGXIAO = 'costume_theme_xinyu_mingxiao'  # 新语明霄
 
 # 幕间，就是式神录这里
 class ShikigamiType(str, Enum):
@@ -54,6 +56,7 @@ class ShikigamiType(str, Enum):
     COSTUME_SHIKIGAMI_10 = 'costume_shikigami_10'  # 今宵胧明
     COSTUME_SHIKIGAMI_11 = 'costume_shikigami_11'  # 花札幕台
     COSTUME_SHIKIGAMI_12 = 'costume_shikigami_12'  # 拾光之窗
+    COSTUME_SHIKIGAMI_13 = 'costume_shikigami_13'  # 梦隙闲花
 
 # 签到主题
 class SignType(str, Enum):
@@ -79,6 +82,11 @@ class BattleType(str, Enum):
     COSTUME_BATTLE_15 = 'costume_battle_15'  # 灵狐寄愿
     COSTUME_BATTLE_UNIVERSAL = 'costume_battle_universal'  # 通用战斗主题
 
+# 战斗场景
+class BattleSceneType(str, Enum):
+    COSTUME_BATTLE_SCENE_DEFAULT = 'costume_battle_scene_default'  # 默认
+    COSTUME_BATTLE_SCENE_1 = 'costume_battle_scene_1'  # 鎏金圣域
+
 
 class CostumeConfig(BaseModel):
     # 皮肤配置
@@ -89,6 +97,7 @@ class CostumeConfig(BaseModel):
     costume_shikigami_type: ShikigamiType = Field(default=ShikigamiType.COSTUME_SHIKIGAMI_DEFAULT, description='costume_shikigami_type_help')
     costume_sign_type: SignType = Field(default=SignType.COSTUME_SIGN_DEFAULT, description='costume_sign_type_help')
     costume_battle_type: BattleType = Field(default=BattleType.COSTUME_BATTLE_DEFAULT, description='costume_battle_type_help')
+    costume_battle_scene_type: BattleSceneType = Field(default=BattleSceneType.COSTUME_BATTLE_SCENE_DEFAULT, description='costume_battle_scene_type_help')
 
     @field_validator('costume_realm_type', mode='before')
     @classmethod
@@ -97,10 +106,10 @@ class CostumeConfig(BaseModel):
             return RealmType.COSTUME_REALM_DEFAULT
         return v
 
-
-
-
-
-
-
-
+    @field_validator('costume_theme_type', mode='before')
+    @classmethod
+    def validate_theme(cls, v):
+        # Preserve selections saved by the earlier local numbered adaptation.
+        if v in ('costume_theme_1', 'costume_theme_2'):
+            return ThemeType.COSTUME_THEME_XINYU_MINGXIAO
+        return v

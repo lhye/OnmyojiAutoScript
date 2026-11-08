@@ -310,12 +310,10 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
     def switch_soul(self):
         """从式神录界面切换御魂"""
         if self.conf.switch_soul.enable:
-            self.ui_get_current_page()
-            self.ui_goto(page_shikigami_records)
+            self.goto_page(page_shikigami_records)
             self.run_switch_soul(self.conf.switch_soul.switch_group_team)
         if self.conf.switch_soul.enable_switch_by_name:
-            self.ui_get_current_page()
-            self.ui_goto(page_shikigami_records)
+            self.goto_page(page_shikigami_records)
             self.run_switch_soul_by_name(self.conf.switch_soul.group_name, self.conf.switch_soul.team_name)
 
     def duel_main(self, screenshot=False) -> bool:
