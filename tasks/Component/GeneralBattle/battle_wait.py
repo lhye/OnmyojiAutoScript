@@ -400,13 +400,9 @@ class UniversalWaitState:
     """通用战斗主题结算等待状态, 挂在 PerBattleSuccess 上随每场战斗自动重置"""
     seen: bool = False  # 是否真的见过鬼火/战斗信息(准备页为 False)
     timer: Timer | None = None  # 结算等待超时
-    click_count: int = 0  # 结算盲点次数
-    throttle: Timer | None = None  # 盲点节流
-    result: bool | None = None  # 记录的战斗结果(True=胜利 False=失败 None=未判定)
-    ocr_timer: Timer | None = None  # 兜底 OCR 的启动延迟
-    ocr_done: bool = False  # 本场结算是否已做过 OCR(每场只做一次)
-    end_seen: bool = False  # 是否识别到底部通用"点击屏幕继续"
-    reward_seen: bool = False  # 是否见过领奖画面
+    ocr_timer: Timer | None = None  # 底部提示 OCR 的 1s 节拍
+    end_seen: bool = False  # 是否曾识别到底部通用"点击屏幕继续"
+    miss: int = 0  # 连续未识别到"点击屏幕继续"的帧数
 
 
 @dataclass
@@ -1193,81 +1189,46 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         return HookSignal.CONTINUE
 
     def _universal_wait_result_with_state(self, uni: UniversalWaitState, state: PerBattleSuccess = None):
-        """通用主题结算(鬼火消失后), 与 dev 通用逻辑一致:
-        - 每帧把 dev 已有的结果图标全部判一遍(胜利横幅/失败印记/贪吃鬼/领奖达摩/金币/皮肤)
-        - 图标都没出现时, 本场结算只做 1 次 OCR(底部通用"点击屏幕继续" + 顺带取结果文字)
-        - 看到领奖画面就按 dev 逻辑点击排除区推进, 奖励全部消失即结束
-        :return: True=胜利, False=失败, None=战斗继续
+        """通用主题结算(鬼火消失后): 不判胜负(默认胜利), 只以底部"点击屏幕继续"为推进信号。
+        - 每秒 1 次 OCR 底部提示区, 有"点击屏幕继续"就点屏幕推进
+        - 该文字约 3 秒一个渐隐/出现周期, 连续 3 帧都没有才认为结算点击完成
+        :return: True=胜利(默认), None=战斗继续
         """
-        logger.info('Universal battle ended, waiting for result')
+        logger.info('Universal battle ended, waiting for continue prompt')
         if uni.timer is None:
             # 魂海完整结算推进(banner→战利品→奖励画面)实测13s+, 原12s贴线误判, 放宽到20s
             uni.timer = Timer(20).start()
         if uni.ocr_timer is None:
-            # 延迟 1.5s 再 OCR: 等胜利/失败横幅动画结束、底部提示稳定出现
-            uni.ocr_timer = Timer(1.5).start()
-        if uni.throttle is None:
-            uni.throttle = Timer(1.5).start()
+            uni.ocr_timer = Timer(1).start()
+        # 文字匹配放宽: OCR 可能把"点击屏幕继续/点击空白区域继续"识别错一两个字, 命中任意关键字即算
+        keywords = ('继续', '点击', '屏幕', '空白')
         while 1:
             self.screenshot()
-            # dev 拥有的结算图标全部判一遍
-            appear_win = self.appear(self.I_WIN, interval=0.8)
-            appear_false = self.appear(self.I_FALSE, interval=0.8)
-            appear_ghost = self.appear(self.I_GREED_GHOST, threshold=0.6)
-            appear_reward = self.appear(self.I_REWARD)
-            appear_gold = self.appear(self.I_REWARD_GOLD)
-            appear_skin = self.appear(self.I_REWARD_GOLD_SNAKE_SKIN)
-            if appear_win and uni.result is None:
-                logger.info('Battle result: win (victory banner)')
-                uni.result = True
-            elif appear_false and uni.result is None:
-                logger.info('Battle result: false (defeat banner)')
-                uni.result = False
-            # 只在图标全部识别不到时, 本场结算做 1 次 OCR: 底部"点击屏幕继续"是通用战斗结束标志
-            recognized = appear_win or appear_false or appear_ghost or appear_reward or appear_gold or appear_skin
-            if not uni.ocr_done and not recognized and not uni.reward_seen and uni.ocr_timer.reached():
-                uni.ocr_done = True
-                text = self.O_BATTLE_RESULT.detect_text(self.device.image)
-                if text:
-                    if '胜利' in text:
-                        logger.info(f'Battle result OCR: {text}')
-                        uni.result = True
-                    elif '失败' in text:
-                        logger.info(f'Battle result OCR: {text}')
-                        uni.result = False
-                    if '继续' in text:
-                        logger.info(f'Battle end prompt: {text}')
-                        uni.end_seen = True
-            if appear_win:
-                # 胜利横幅(地域鬼王/寮突破结算链)只响应底部"点击屏幕继续"
-                self.click(self.C_WIN_4, interval=1.5)
-                continue
-            if appear_false:
-                # 失败横幅: 点掉印记推进结算(与 dev failure 钩子一致)
-                self.appear_then_click(self.I_FALSE, interval=1.5)
-                continue
-            if appear_ghost or appear_reward or appear_gold or appear_skin:
-                uni.reward_seen = True
-                # 领奖推进: 完全沿用 dev 逻辑, 点击排除区(避开物品格), 点几次即可推进
-                if state is not None and state.click_stage_2 is not None:
-                    self.click(state.click_stage_2, interval=1.5)
-                continue
-            if uni.reward_seen or uni.end_seen:
-                logger.info('Get all reward')
-                return True if uni.result is None else uni.result
             if self.appear(self.I_BATTLE_EMBER):
+                # 鬼火重现说明还在战斗
                 return None
+            if uni.ocr_timer.reached():
+                uni.ocr_timer.reset()
+                text = self.O_BATTLE_RESULT.detect_text(self.device.image)
+                if text and any(keyword in text for keyword in keywords):
+                    logger.info(f'Battle continue prompt: {text}')
+                    uni.end_seen = True
+                    uni.miss = 0
+                    # 点"点击屏幕继续"(点击区仅覆盖该提示文字)
+                    self.click(self.C_CONTINUE_PROMPT, interval=1)
+                    continue
+                if uni.end_seen:
+                    uni.miss += 1
+                    logger.info(f'Continue prompt missing x{uni.miss}')
+                    if uni.miss >= 3:
+                        logger.info('Settlement finished')
+                        return True
             if self._battle_finish_check() or self.appear(self.I_CHECK_MAIN):
                 logger.info('Battle done, task page arrived')
-                return True if uni.result is None else uni.result
+                return True
             if uni.timer.reached():
-                logger.warning('Universal battle result timeout, treat as false')
-                return False if uni.result is None else uni.result
-            if uni.click_count < 12 and uni.throttle.reached():
-                # 结算链推进(仅底部安全区域), 上限12次防风控
-                self.click(self.C_WIN_4)
-                uni.click_count += 1
-                uni.throttle.reset()
+                logger.warning('Universal battle timeout, treat as win')
+                return True
 
     def _bw_success_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:
         state: PerBattleSuccess = pri.per_battle

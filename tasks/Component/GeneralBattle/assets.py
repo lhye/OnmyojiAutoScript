@@ -157,8 +157,10 @@ class GeneralBattleAssets:
 	O_BOSS_MARK = RuleOcr(roi=(379,44,50,21), area=(379,44,50,21), mode="Single", method="Default", keyword="已标记", name="boss_mark")
 	# 绿标区域
 	O_GREEN_MARK_AREA = RuleOcr(roi=(84,256,1116,308), area=(84,256,1116,308), mode="Full", method="Default", keyword="", name="green_mark_area")
-	# 战斗结算底部通用提示"点击屏幕继续/点击空白区域继续", 所有战斗结束场景通用
-	O_BATTLE_RESULT = RuleOcr(roi=(240,620,800,90), area=(240,620,800,90), mode="Full", method="Default", keyword="", name="battle_result")
+	# 战斗结算底部通用提示"点击屏幕继续/点击空白区域继续", 实测文字框 (558,681,165,25)
+	O_BATTLE_RESULT = RuleOcr(roi=(530,670,260,50), area=(530,670,260,50), mode="Full", method="Default", keyword="", name="battle_result")
+	# 点击区贴住该提示文字, 避免点到其它按钮
+	C_CONTINUE_PROMPT = RuleClick(roi_front=(555,676,175,36), roi_back=(555,676,175,36), name="continue_prompt")
 
 
 	# Swipe Rule Assets
