@@ -87,7 +87,9 @@ class GeneralBattle(BattleWait, GeneralBuff):
                     continue
                 continue
             # 未知界面, 既不是准备界面也不是战斗界面
-            # logger.info('Wait for preparation page')  # 这玩意刷屏
+            # 新版式神录式准备页 is_in_prepare 不命中, 但准备按钮(I_PREPARE_HIGHLIGHT)可见, 直接点击推进
+            if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8):
+                continue
             sleep(random.uniform(0.4, 0.8))
         return False
 
@@ -743,3 +745,17 @@ if __name__ == '__main__':
                                           size=color_size
                                           )
     print("")
+
+
+def run_task_or_default_general_battle(task) -> bool:
+    """
+    超时或异常时接管战斗的兜底函数
+    https://github.com/runhey/OnmyojiAutoScript/issues/1884
+    """
+    try:
+        config = task.config.general_battle_config
+    except AttributeError:
+        # 某些任务(如 DemonEncounter)没有直接的 general_battle_config 字段
+        return False
+    gb = GeneralBattle(config=task.config, device=task.device)
+    return gb.run_general_battle(config=config)

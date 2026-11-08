@@ -204,6 +204,8 @@ class GeneralBattleAssets:
 	C_END_1_5 = RuleClick(roi_front=(805,174,100,100), roi_back=(805,174,100,100), name="end_1_5")
 	# description 
 	C_END_1_6 = RuleClick(roi_front=(942,175,100,100), roi_back=(942,175,100,100), name="end_1_6")
+	# 贪吃鬼/御魂溢出结算弹窗的排除点击位
+	C_OVERFLOW_GHOST = RuleClick(roi_front=(456,381,160,82), roi_back=(456,381,160,82), name="overflow_ghost")
 	# description 
 	C_END_2_1 = RuleClick(roi_front=(266,310,100,100), roi_back=(266,310,100,100), name="end_2_1")
 	# description 

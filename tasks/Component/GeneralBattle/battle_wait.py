@@ -1175,7 +1175,11 @@ class BattleWait(BaseTask, GeneralBattleAssets):
 
         if self._universal_battle:
             # 通用战斗主题: 鬼火消失后以公共领奖画面/任务收尾标志判定胜负(不使用主题图)
-            if self.appear(self.I_BATTLE_EMBER):
+            if self.appear(self.I_BATTLE_EMBER) or self.appear(self.I_BATTLE_INFO):
+                self._uni_battle_seen = True
+                return HookSignal.CONTINUE
+            if not getattr(self, '_uni_battle_seen', False):
+                # 还没真正进入战斗(如新版式神录式准备页), 不能当成战斗结算空等20s+盲点
                 return HookSignal.CONTINUE
             result = self._universal_wait_result()
             if result is None:
@@ -1304,11 +1308,14 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             # 计时8秒时间到了， 那就一直按 准备按钮 直到消失去
             # 不要把这行代码合并到下面去
             self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8)
+            self._uni_battle_seen = False
             return HookSignal.CONTINUE
 
         # 没有切阵容那就一直按 准备按钮 直到消失去]
 
-        self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1)
+        if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1):
+            # 新一局准备开始, 复位"已进入战斗"标记, 避免把准备页当成战斗结算
+            self._uni_battle_seen = False
         return HookSignal.CONTINUE
 
     def _bw_preset_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:
