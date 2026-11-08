@@ -354,7 +354,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         logger.info('Skip this wanted quest')
         self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
         # 新版界面取消追踪后详情页不会自动关闭, 不关闭会导致后续 find_wq 一直识别失败
-        self.ui_click_until_disappear(self.C_WQ_TRACE_ONE_CLOSE, interval=1)
+        self.ui_click_until_disappear(self.I_WQ_TRACE_ONE_CLOSE, interval=1)
 
     def challenge(self, goto_btn, num):
         self.ui_click(goto_btn, self.I_WQC_FIRE)

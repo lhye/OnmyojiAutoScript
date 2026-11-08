@@ -133,5 +133,14 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "庭院悬赏任务界面 单个任务点开后的界面 是否为现世任务标志"
+  },
+  {
+    "itemName": "wq_trace_one_close",
+    "imageName": "wq_trace_one_close.png",
+    "roiFront": "1190,70,56,56",
+    "roiBack": "1160,50,130,130",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "庭院悬赏任务界面 单个任务点开后的界面 右上角关闭按钮"
   }
 ]

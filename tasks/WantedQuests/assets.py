@@ -127,6 +127,8 @@ class WantedQuestsAssets:
 	I_WQ_TRACE_ONE_CHECK_OPENED = RuleImage(roi_front=(778,166,52,29), roi_back=(582,147,431,110), threshold=0.8, method="Template matching", file="./tasks/WantedQuests/wq/wq_trace_one_check_opened.png")
 	# 庭院悬赏任务界面 单个任务点开后的界面 是否为现世任务标志 
 	I_WQ_TRACE_ONE_REALWORLD = RuleImage(roi_front=(1173,579,51,54), roi_back=(1037,517,243,203), threshold=0.8, method="Template matching", file="./tasks/WantedQuests/wq/wq_trace_one_realworld.png")
+	# 庭院悬赏任务界面 单个任务点开后的界面 右上角关闭按钮 
+	I_WQ_TRACE_ONE_CLOSE = RuleImage(roi_front=(1190,70,56,56), roi_back=(1160,50,130,130), threshold=0.8, method="Template matching", file="./tasks/WantedQuests/wq/wq_trace_one_close.png")
 
 
 	# Ocr Rule Assets
