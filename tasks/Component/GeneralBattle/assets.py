@@ -157,8 +157,8 @@ class GeneralBattleAssets:
 	O_BOSS_MARK = RuleOcr(roi=(379,44,50,21), area=(379,44,50,21), mode="Single", method="Default", keyword="已标记", name="boss_mark")
 	# 绿标区域
 	O_GREEN_MARK_AREA = RuleOcr(roi=(84,256,1116,308), area=(84,256,1116,308), mode="Full", method="Default", keyword="", name="green_mark_area")
-	# 战斗结算结果(胜利/失败), 通用主题下主题图不可靠时用文字兜底, OCR 全图扫描
-	O_BATTLE_RESULT = RuleOcr(roi=(0,0,1280,720), area=(0,0,1280,720), mode="Full", method="Default", keyword="", name="battle_result")
+	# 战斗结算结果(胜利/失败), 通用主题下主题图不可靠时用文字兜底, OCR 只扫上半屏(结果文字区域)
+	O_BATTLE_RESULT = RuleOcr(roi=(0,0,1280,360), area=(0,0,1280,360), mode="Full", method="Default", keyword="", name="battle_result")
 
 
 	# Swipe Rule Assets

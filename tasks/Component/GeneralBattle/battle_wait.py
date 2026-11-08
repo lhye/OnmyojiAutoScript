@@ -1202,7 +1202,8 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             # 魂海完整结算推进(banner→战利品→奖励画面)实测13s+, 原12s贴线误判, 放宽到20s
             uni.timer = Timer(20).start()
         if uni.ocr_timer is None:
-            uni.ocr_timer = Timer(1).start()
+            # 低频兜底: 只有全部图标都识别不到时才 OCR, 每 2 秒最多一次
+            uni.ocr_timer = Timer(2).start()
         if uni.throttle is None:
             uni.throttle = Timer(1.5).start()
         while 1:
@@ -1220,11 +1221,12 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             elif appear_false and uni.result is None:
                 logger.info('Battle result: false (defeat banner)')
                 uni.result = False
-            # 每秒 1 次 OCR 识别"胜利"/"失败"记录结果(通用主题下主题图不可靠, 靠文字兜底)
-            if uni.ocr_timer.reached():
+            # 兜底: 结算图标全部识别不到、且结果未知时才 OCR(每 2 秒最多一次, 只扫上半屏)
+            recognized = appear_win or appear_false or appear_ghost or appear_reward or appear_gold or appear_skin
+            if uni.result is None and not recognized and not uni.reward_seen and uni.ocr_timer.reached():
                 uni.ocr_timer.reset()
                 text = self.O_BATTLE_RESULT.detect_text(self.device.image)
-                if text and uni.result is None:
+                if text:
                     if '胜利' in text:
                         logger.info(f'Battle result OCR: {text}')
                         uni.result = True
