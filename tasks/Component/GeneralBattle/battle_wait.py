@@ -403,7 +403,9 @@ class UniversalWaitState:
     click_count: int = 0  # 结算盲点次数
     throttle: Timer | None = None  # 盲点节流
     result: bool | None = None  # 记录的战斗结果(True=胜利 False=失败 None=未判定)
-    ocr_timer: Timer | None = None  # 结果 OCR 节流(每秒一次)
+    ocr_timer: Timer | None = None  # 兜底 OCR 的启动延迟
+    ocr_done: bool = False  # 本场结算是否已做过 OCR(每场只做一次)
+    end_seen: bool = False  # 是否识别到底部通用"点击屏幕继续"
     reward_seen: bool = False  # 是否见过领奖画面
 
 
@@ -1193,7 +1195,7 @@ class BattleWait(BaseTask, GeneralBattleAssets):
     def _universal_wait_result_with_state(self, uni: UniversalWaitState, state: PerBattleSuccess = None):
         """通用主题结算(鬼火消失后), 与 dev 通用逻辑一致:
         - 每帧把 dev 已有的结果图标全部判一遍(胜利横幅/失败印记/贪吃鬼/领奖达摩/金币/皮肤)
-        - 图标都没出现时, 每秒 1 次全图 OCR 识别"胜利"/"失败"作为补充, 结果记录到 uni.result
+        - 图标都没出现时, 本场结算只做 1 次 OCR(底部通用"点击屏幕继续" + 顺带取结果文字)
         - 看到领奖画面就按 dev 逻辑点击排除区推进, 奖励全部消失即结束
         :return: True=胜利, False=失败, None=战斗继续
         """
@@ -1202,8 +1204,8 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             # 魂海完整结算推进(banner→战利品→奖励画面)实测13s+, 原12s贴线误判, 放宽到20s
             uni.timer = Timer(20).start()
         if uni.ocr_timer is None:
-            # 低频兜底: 只有全部图标都识别不到时才 OCR, 每 2 秒最多一次
-            uni.ocr_timer = Timer(2).start()
+            # 延迟 1.5s 再 OCR: 等胜利/失败横幅动画结束、底部提示稳定出现
+            uni.ocr_timer = Timer(1.5).start()
         if uni.throttle is None:
             uni.throttle = Timer(1.5).start()
         while 1:
@@ -1221,10 +1223,10 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             elif appear_false and uni.result is None:
                 logger.info('Battle result: false (defeat banner)')
                 uni.result = False
-            # 兜底: 结算图标全部识别不到、且结果未知时才 OCR(每 2 秒最多一次, 只扫上半屏)
+            # 只在图标全部识别不到时, 本场结算做 1 次 OCR: 底部"点击屏幕继续"是通用战斗结束标志
             recognized = appear_win or appear_false or appear_ghost or appear_reward or appear_gold or appear_skin
-            if uni.result is None and not recognized and not uni.reward_seen and uni.ocr_timer.reached():
-                uni.ocr_timer.reset()
+            if not uni.ocr_done and not recognized and not uni.reward_seen and uni.ocr_timer.reached():
+                uni.ocr_done = True
                 text = self.O_BATTLE_RESULT.detect_text(self.device.image)
                 if text:
                     if '胜利' in text:
@@ -1233,6 +1235,9 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                     elif '失败' in text:
                         logger.info(f'Battle result OCR: {text}')
                         uni.result = False
+                    if '继续' in text:
+                        logger.info(f'Battle end prompt: {text}')
+                        uni.end_seen = True
             if appear_win:
                 # 胜利横幅(地域鬼王/寮突破结算链)只响应底部"点击屏幕继续"
                 self.click(self.C_WIN_4, interval=1.5)
@@ -1247,7 +1252,7 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                 if state is not None and state.click_stage_2 is not None:
                     self.click(state.click_stage_2, interval=1.5)
                 continue
-            if uni.reward_seen:
+            if uni.reward_seen or uni.end_seen:
                 logger.info('Get all reward')
                 return True if uni.result is None else uni.result
             if self.appear(self.I_BATTLE_EMBER):
