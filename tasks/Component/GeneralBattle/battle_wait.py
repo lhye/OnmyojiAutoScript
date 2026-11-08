@@ -1208,8 +1208,10 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                 # 鬼火重现说明还在战斗
                 return None
             if uni.ocr_timer.reached():
+                # 单行识别(只跑识别模型, 不做文本检测): 实测 ~0.02s, 比整图检测(0.2s)快一个数量级
+                text = self.O_BATTLE_RESULT.ocr_single_line(self.device.image)
+                # OCR 结束后才开始计时, 否则 OCR 自身耗时超过间隔时会变成连续 OCR, 把 CPU 打满
                 uni.ocr_timer.reset()
-                text = self.O_BATTLE_RESULT.detect_text(self.device.image)
                 if text and any(keyword in text for keyword in keywords):
                     logger.info(f'Battle continue prompt: {text}')
                     uni.end_seen = True
