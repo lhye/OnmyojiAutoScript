@@ -52,8 +52,16 @@ class GeneralBattle(BattleWait, GeneralBuff):
         # 绿标
         if self.is_in_battle(False):
             self.green_mark(config.green_enable, config.green_mark)
-        # 战中设置
-        win = self.battle_wait(random_click_swipt_enable=config.random_click_swipt_enable)
+        # 战中设置: 迁入新战斗框架, 由默认策略+options 驱动事件钩子
+        # (战前切阵容/加成/绿标已由本方法处理, 默认 options 里 preset/green 均为关闭, 不会重复执行)
+        from tasks.Component.GeneralBattle.battle import Battle
+        from tasks.Component.GeneralBattle.battle_wait import battle_wait_options, OptionPrepareDefault
+
+        _strategies, options = self.loadout_default()
+        options['prepare'] = OptionPrepareDefault(lock_team=config.lock_team_enable)
+        with battle_wait_options(**options):
+            # random_click_swipt_enable 由新框架兼容映射为 randomclick 策略
+            win = Battle.battle_wait(self, random_click_swipt_enable=config.random_click_swipt_enable)
         if win:
             return True
         else:
@@ -210,108 +218,6 @@ class GeneralBattle(BattleWait, GeneralBuff):
                 break
 
         return True
-
-    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
-        """
-        第二版战斗等待，参考 Orochi 和 Secret 的优化版本。
-        2026-09-19收编: 原v1(按主题图匹配"胜利/失败"判定)已删除, 全任务统一走本实现。
-        通用主题: 鬼火可见性+盲点推进判定胜负; 非通用主题: 保留I_WIN/I_DE_WIN/I_FALSE主题图判定。
-        领奖循环兼容贪吃鬼/达摩/金达摩, 比v1多认I_GREED_GHOST。
-        :return: 胜利返回 True，失败返回 False
-        """
-        # 统一点击名称，防止 GameTooManyClickError 误报
-        self.C_REWARD_1.name, self.C_REWARD_2.name, self.C_REWARD_3.name = 'C_REWARD', 'C_REWARD', 'C_REWARD'
-        self.device.stuck_record_add('BATTLE_STATUS_S')
-        self.device.click_record_clear()
-
-        logger.info("Start battle process")
-        while 1:
-            self.screenshot()
-            if self._universal_battle:
-                # 通用战斗主题: 鬼火可见=战斗进行中; 结束后以领奖画面(公共资产)/准备界面判定胜负, 不使用OCR
-                if not self._universal_battle_running():
-                    result = self._universal_wait_result()
-                    if result is False:
-                        return False
-                    if result is None:
-                        continue
-                    # 胜利: 领奖画面已出现, 落到下方领奖逻辑
-                else:
-                    if random_click_swipt_enable:
-                        self.random_click_swipt()
-                    continue
-            else:
-                # 出现赢的鼓，点击直到消失
-                if self.appear_then_click(self.I_WIN, interval=0.8):
-                    continue
-                # 逢魔胜利图
-                if self.appear(self.I_DE_WIN):
-                    self.ui_click_until_disappear(self.I_DE_WIN)
-                    continue
-                if self.appear(self.I_FALSE, threshold=0.8):
-                    logger.warning('False battle')
-                    self.ui_click_until_disappear(self.I_FALSE)
-                    return False
-            appear_ghost, appear_reward, appear_gold = (
-                self.appear(self.I_GREED_GHOST),
-                self.appear(self.I_REWARD),
-                self.appear(self.I_REWARD_GOLD)
-            )
-            if appear_ghost or appear_reward or appear_gold:
-                logger.info('Win battle')
-                # 领奖画面只能点达摩/“点击屏幕继续”: 随机点落到物品格上只会弹出物品详情,
-                # 而详情面板开着时点达摩仅够关闭面板 → 两类点击互相抵消, 结算永远不推进,
-                # 最终触发device的“两按钮交替6次”守卫重启(2026-10-24 06:25、2026-10-25 06:20 实锤)
-                timer = Timer(20).start()
-                confirm_count = 0
-                while 1:
-                    self.screenshot()
-
-                    # 御魂仓库满时领奖画面被“当前持有御魂过多”弹窗遮挡, 连点无效直至风控
-                    if self.appear_then_click(self.I_OVERFLOW_KNOW, interval=1.5):
-                        continue
-
-                    _appear_ghost, _appear_reward, _appear_gold = (
-                        self.appear(self.I_GREED_GHOST, threshold=0.6),
-                        self.appear(self.I_REWARD),
-                        self.appear(self.I_REWARD_GOLD)
-                    )
-                    # logger.info(f'_appear_ghost: {_appear_ghost} _appear_reward: {_appear_reward} _appear_gold: {_appear_gold}')
-                    if any([_appear_ghost, _appear_reward, _appear_gold]):
-                        confirm_count = 0
-                        # 有界探测(20s Timer), 不是死循环: 清空点击记录避免“同一按钮10次”风控误报
-                        self.device.click_record_clear()
-                        # 优先点识别到的达摩(“点击屏幕继续”), 位置随画面自适应;
-                        # 达摩下半部分在物品详情面板之外, 面板打开时这一下能关掉面板, 已关闭时直接推进结算
-                        self.click(self.I_REWARD if _appear_reward else self.C_REWARD_1, interval=1.5)
-                    elif self._battle_finish_check():
-                        # 任务侧“认识界面”命中(御魂回房间/秘闻回地图等): 结算彻底结束
-                        logger.info('Battle done at finish check')
-                        return True
-                    elif confirm_count < 3:
-                        # 三资产消失≠结算结束: 御魂组队领奖后还有战利品锦囊等“点击屏幕继续”过渡画面
-                        # (I_REWARD/GHOST/GOLD全不命中), 继续点底部空白区点掉过渡画面;
-                        # 队员首次回庭院无房间标志, 连续3轮(约4.5s)无资产兜底结束(庭院空白点击无害)
-                        confirm_count += 1
-                        self.click(self.C_REWARD_1, interval=1.5)
-                        continue
-                    else:
-                        logger.info('Battle done')
-                        return True
-                    if self._hook_special_reward():
-                        continue
-                    if timer.reached_and_reset():
-                        logger.warning('battle ')
-                        break
-            elif self._battle_finish_check():
-                # 任务侧"认识界面"命中(秘闻结算推完回地图/御魂回房间, 无领奖画面):
-                # wait_result返回True后若画面无领奖资产会一直空转不点击, 60s触发GameStuckError
-                logger.info('Battle done at finish check')
-                return True
-            # 随机滑动
-            if random_click_swipt_enable:
-                self.random_click_swipt()
-        return False
 
     def _hook_special_reward(self) -> bool:
         """
@@ -532,49 +438,13 @@ class GeneralBattle(BattleWait, GeneralBuff):
         重写本方法识别地图标志提前结束等待, 如Secret的挑战按钮重现"""
         return False
 
-    def _universal_wait_result(self):
-        """战斗结束(鬼火消失)后的胜负判定:
-        - 领奖画面出现(公共资产, 各主题一致) -> 胜利
-        - 回到准备界面 / 超时 -> 失败
-        - 鬼火重新出现(多轮战斗下一轮) -> 战斗继续
-        - 任务自定义收尾标志命中(重写_battle_finish_check) -> 结束
-        期间限时盲点结算banner区域加速推进
-        :return: True=胜利, False=失败, None=战斗继续
-        """
-        logger.info('Universal battle ended, waiting for result')
-        # 魂海完整结算推进(banner→战利品→奖励画面)实测13s+, 原12s贴线误判, 放宽到20s
-        timer = Timer(20).start()
-        # 鬼火消失后持续盲点直至跳转到认识界面(领奖画面/鬼火重现/finish_check), 2026-09-29用户拍板
-        # 上限12次防风控: 15条记录内单按钮>=6次触发, 三点位随机分摊12次每点位期望4次
-        click_count = 0
-        throttle_timer = Timer(1.5).start()
-        while 1:
-            self.screenshot()
-            if self.appear(self.I_REWARD, threshold=0.6) or self.appear(self.I_REWARD_GOLD, threshold=0.8):
-                return True
-            if self.appear(self.I_BATTLE_EMBER):
-                return None
-            # 不判胜负(2026-09-19用户拍板): 判负依赖的画面资产在魂海结算链路误命中
-            # (is_in_prepare全家桶和大鼓模板均中招), 且调用方普遍不关心win值。
-            # 失败场景(回房间无奖励画面)由超时兜底返回, 此时画面已可操作
-            if self._battle_finish_check():
-                logger.info('Battle finish check hit, task page arrived')
-                return True
-            if timer.reached():
-                logger.warning('Universal battle result timeout, treat as false')
-                return False
-            if click_count < 12 and throttle_timer.reached():
-                self.click(random.choice([self.C_WIN_1, self.C_WIN_2, self.C_WIN_3]))
-                click_count += 1
-                throttle_timer.reset()
-
     def _universal_click_banner(self, count: int = 3, interval: float = 1.5, delay: float = 0) -> None:
         """通用战斗主题: 盲点结算banner区域(胜/败横幅需点击才会消失), 次数上限防止误点底层界面"""
         if delay:
             sleep(delay)
         for _ in range(count):
             self.screenshot()
-            self.click(random.choice([self.C_WIN_1, self.C_WIN_2, self.C_WIN_3]), interval=interval)
+            self.click(random.choice([self.C_WIN_1, self.C_WIN_2, self.C_WIN_3, self.C_WIN_4]), interval=interval)
 
     def _click_exit(self) -> bool:
         """点击战斗左上角退出按钮: 模板优先; 通用战斗主题按固定位置点击(各主题按钮位置一致, 以鬼火条可见为战斗中前提)"""

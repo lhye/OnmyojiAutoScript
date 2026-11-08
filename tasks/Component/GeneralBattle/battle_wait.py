@@ -79,6 +79,7 @@ import copy
 import math
 import difflib
 from copy import deepcopy
+from contextlib import contextmanager
 
 
 from functools import wraps, update_wrapper
@@ -96,6 +97,19 @@ from module.base.utils import get_color, color_similar
 from tasks.base_task import BaseTask
 from tasks.Component.GeneralBattle.assets import GeneralBattleAssets
 from tasks.Component.GeneralBattle.config_general_battle import GreenMarkType, GreenMarkEnum
+
+
+@contextmanager
+def combat_screenshot_interval(device):
+    """
+    战斗期间切换到 Optimization.CombatScreenshotInterval(可配置, 0.3~1.0), 降低截屏频率以节省 CPU。
+    退出时恢复常规的 Optimization.ScreenshotInterval。
+    """
+    device.screenshot_interval_set('combat')
+    try:
+        yield
+    finally:
+        device.screenshot_interval_set()
 
 
 P = ParamSpec('P')
@@ -382,9 +396,22 @@ class PerBattleInterrupt:
 
 
 @dataclass
+class UniversalWaitState:
+    """通用战斗主题结算等待状态, 挂在 PerBattleSuccess 上随每场战斗自动重置"""
+    seen: bool = False  # 是否真的见过鬼火/战斗信息(准备页为 False)
+    timer: Timer | None = None  # 结算等待超时
+    click_count: int = 0  # 结算盲点次数
+    throttle: Timer | None = None  # 盲点节流
+    result: bool | None = None  # 记录的战斗结果(True=胜利 False=失败 None=未判定)
+    ocr_timer: Timer | None = None  # 结果 OCR 节流(每秒一次)
+    reward_seen: bool = False  # 是否见过领奖画面
+
+
+@dataclass
 class PerBattleSuccess:
     click_stage_1: RuleClickExclude | None = None
     click_stage_2: RuleClickExclude | None = None
+    uni: UniversalWaitState = field(default_factory=UniversalWaitState)
 
     @classmethod
     def reward_exclude_click(
@@ -1147,10 +1174,10 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         state.fallback_timer.reset()
         if state.click_stage_2 is None:
             state.click_stage_2 = PerBattleSuccess.reward_exclude_click(self, options.excludes, name='completion_exclude_click')
-        if self.click(state.click_stage_2, interval=1.5):
-            state.fallback_cnt += 1
-        # x, y = state.click_stage_2.coord()
-        # self.device.click(x=x, y=y, control_name='completion_exclude_click')
+        self.click(state.click_stage_2, interval=1.5)
+        # 按尝试次数计数: 排除点击位选不到坐标时 self.click 会返回 False,
+        # 若只在点击成功时累加, fallback_cnt 永远到不了 5 → completion 无限循环 → 60s 无点击触发 GameStuckError
+        state.fallback_cnt += 1
         return HookSignal.CONTINUE
 
     def _bw_interrupt_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:
@@ -1162,6 +1189,78 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         self.appear_then_click(self.I_OVERFLOW_KNOW, interval=1.5)
 
         return HookSignal.CONTINUE
+
+    def _universal_wait_result_with_state(self, uni: UniversalWaitState, state: PerBattleSuccess = None):
+        """通用主题结算(鬼火消失后), 与 dev 通用逻辑一致:
+        - 每帧把 dev 已有的结果图标全部判一遍(胜利横幅/失败印记/贪吃鬼/领奖达摩/金币/皮肤)
+        - 图标都没出现时, 每秒 1 次全图 OCR 识别"胜利"/"失败"作为补充, 结果记录到 uni.result
+        - 看到领奖画面就按 dev 逻辑点击排除区推进, 奖励全部消失即结束
+        :return: True=胜利, False=失败, None=战斗继续
+        """
+        logger.info('Universal battle ended, waiting for result')
+        if uni.timer is None:
+            # 魂海完整结算推进(banner→战利品→奖励画面)实测13s+, 原12s贴线误判, 放宽到20s
+            uni.timer = Timer(20).start()
+        if uni.ocr_timer is None:
+            uni.ocr_timer = Timer(1).start()
+        if uni.throttle is None:
+            uni.throttle = Timer(1.5).start()
+        while 1:
+            self.screenshot()
+            # dev 拥有的结算图标全部判一遍
+            appear_win = self.appear(self.I_WIN, interval=0.8)
+            appear_false = self.appear(self.I_FALSE, interval=0.8)
+            appear_ghost = self.appear(self.I_GREED_GHOST, threshold=0.6)
+            appear_reward = self.appear(self.I_REWARD)
+            appear_gold = self.appear(self.I_REWARD_GOLD)
+            appear_skin = self.appear(self.I_REWARD_GOLD_SNAKE_SKIN)
+            if appear_win and uni.result is None:
+                logger.info('Battle result: win (victory banner)')
+                uni.result = True
+            elif appear_false and uni.result is None:
+                logger.info('Battle result: false (defeat banner)')
+                uni.result = False
+            # 每秒 1 次 OCR 识别"胜利"/"失败"记录结果(通用主题下主题图不可靠, 靠文字兜底)
+            if uni.ocr_timer.reached():
+                uni.ocr_timer.reset()
+                text = self.O_BATTLE_RESULT.detect_text(self.device.image)
+                if text and uni.result is None:
+                    if '胜利' in text:
+                        logger.info(f'Battle result OCR: {text}')
+                        uni.result = True
+                    elif '失败' in text:
+                        logger.info(f'Battle result OCR: {text}')
+                        uni.result = False
+            if appear_win:
+                # 胜利横幅(地域鬼王/寮突破结算链)只响应底部"点击屏幕继续"
+                self.click(self.C_WIN_4, interval=1.5)
+                continue
+            if appear_false:
+                # 失败横幅: 点掉印记推进结算(与 dev failure 钩子一致)
+                self.appear_then_click(self.I_FALSE, interval=1.5)
+                continue
+            if appear_ghost or appear_reward or appear_gold or appear_skin:
+                uni.reward_seen = True
+                # 领奖推进: 完全沿用 dev 逻辑, 点击排除区(避开物品格), 点几次即可推进
+                if state is not None and state.click_stage_2 is not None:
+                    self.click(state.click_stage_2, interval=1.5)
+                continue
+            if uni.reward_seen:
+                logger.info('Get all reward')
+                return True if uni.result is None else uni.result
+            if self.appear(self.I_BATTLE_EMBER):
+                return None
+            if self._battle_finish_check() or self.appear(self.I_CHECK_MAIN):
+                logger.info('Battle done, task page arrived')
+                return True if uni.result is None else uni.result
+            if uni.timer.reached():
+                logger.warning('Universal battle result timeout, treat as false')
+                return False if uni.result is None else uni.result
+            if uni.click_count < 12 and uni.throttle.reached():
+                # 结算链推进(仅底部安全区域), 上限12次防风控
+                self.click(self.C_WIN_4)
+                uni.click_count += 1
+                uni.throttle.reset()
 
     def _bw_success_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:
         state: PerBattleSuccess = pri.per_battle
@@ -1175,13 +1274,14 @@ class BattleWait(BaseTask, GeneralBattleAssets):
 
         if self._universal_battle:
             # 通用战斗主题: 鬼火消失后以公共领奖画面/任务收尾标志判定胜负(不使用主题图)
+            uni: UniversalWaitState = state.uni
             if self.appear(self.I_BATTLE_EMBER) or self.appear(self.I_BATTLE_INFO):
-                self._uni_battle_seen = True
+                uni.seen = True
                 return HookSignal.CONTINUE
-            if not getattr(self, '_uni_battle_seen', False):
+            if not uni.seen:
                 # 还没真正进入战斗(如新版式神录式准备页), 不能当成战斗结算空等20s+盲点
                 return HookSignal.CONTINUE
-            result = self._universal_wait_result()
+            result = self._universal_wait_result_with_state(uni, state)
             if result is None:
                 return HookSignal.CONTINUE
             if result:
@@ -1308,14 +1408,11 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             # 计时8秒时间到了， 那就一直按 准备按钮 直到消失去
             # 不要把这行代码合并到下面去
             self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8)
-            self._uni_battle_seen = False
             return HookSignal.CONTINUE
 
         # 没有切阵容那就一直按 准备按钮 直到消失去]
 
-        if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1):
-            # 新一局准备开始, 复位"已进入战斗"标记, 避免把准备页当成战斗结算
-            self._uni_battle_seen = False
+        self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1)
         return HookSignal.CONTINUE
 
     def _bw_preset_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:

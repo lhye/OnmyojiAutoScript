@@ -11,6 +11,8 @@ from module.logger import logger
 from tasks.GameUi.game_ui import GameUi
 from tasks.GameUi.page import page_main, page_hunt, page_shikigami_records, page_guild
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
+from tasks.Component.GeneralBattle.battle import Battle
+from tasks.Component.GeneralBattle.battle_wait import battle_wait_options
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.Component.GeneralInvite.general_invite import GeneralInvite
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
@@ -18,7 +20,7 @@ from tasks.DemonRetreat.assets import DemonRetreatAssets
 from tasks.AbyssShadows.assets import AbyssShadowsAssets
 from tasks.DemonRetreat.config import DemonRetreat
 
-class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssShadowsAssets):
+class ScriptTask(GameUi, Battle, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssShadowsAssets):
 
     def run(self):
         """
@@ -212,7 +214,10 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
         if self.is_in_battle(False):
             self.green_mark(config.green_enable, config.green_mark)
 
-        win = self.battle_wait(config.random_click_swipt_enable)
+        # 新战斗框架: 由 GeneralBattleConfig 生成 options 后交给事件驱动钩子
+        strategies, options = self.loadout_from_config(config)
+        with battle_wait_options(**options):
+            win = self.battle_wait()
         if win:
             return True
         else:

@@ -8,7 +8,7 @@ from module.atom.ocr import RuleOcr
 from tasks.Component.GeneralBattle.battle_wait import (
     BattleWait, battle_wait_strategy, battle_wait_options,
     OptionPrepareDefault, OptionPresetDefault, OptionGreenDefault, OptionRandomclickDefault,
-    runtime,
+    runtime, combat_screenshot_interval,
 )
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig, GreenMarkType
 
@@ -61,7 +61,8 @@ class Battle(BattleWait):
     @log_battle_start
     @battle_wait_strategy()
     def battle_wait(self, *args, **kwargs):
-        return self.battle_wait_with_strategy(*args, **kwargs)
+        with combat_screenshot_interval(self.device):
+            return self.battle_wait_with_strategy(*args, **kwargs)
 
 
     def battle_run(self):

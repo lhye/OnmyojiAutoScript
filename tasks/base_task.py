@@ -53,6 +53,7 @@ class BaseTask(GlobalGameAssets, CostumeBase):
         self.device = device
 
         self.interval_timer = {}  # 这个是用来记录每个匹配的运行间隔的，用于控制运行频率
+        self._burst_timer = Timer(2).start()  # 好友邀请检测节流, 每2秒检测一次
         self.animates = {}  # 保存缓存
         self.start_time = datetime.now()  # 启动的时间
         self.check_costume(self.config.global_game.costume_config)
@@ -148,7 +149,9 @@ class BaseTask(GlobalGameAssets, CostumeBase):
         """
         self.device.screenshot()
         # 判断勾协
-        self._burst()
+        # 每次截图都做一次邀请匹配成本高(战斗每帧都会截图), 节流到2秒一次
+        if self._burst_timer.reached() and self._burst():
+            self._burst_timer.reset()
 
         # # 判断网络异常
         # if self.appear(self.I_NETWORK_ABNORMAL):

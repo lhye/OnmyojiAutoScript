@@ -17,6 +17,8 @@ class GeneralBattleAssets:
 	C_WIN_2 = RuleClick(roi_front=(22,112,210,496), roi_back=(22,112,210,496), name="win_2")
 	# description
 	C_WIN_3 = RuleClick(roi_front=(1059,114,206,468), roi_back=(1059,114,206,468), name="win_3")
+	# 通用战斗主题: 底部"点击屏幕继续"区域(地域鬼王/寮突破结算链: 胜利页→掉落页只响应该区域点击)
+	C_WIN_4 = RuleClick(roi_front=(400,600,480,110), roi_back=(400,600,480,110), name="win_4")
 	# 通用战斗主题: 战斗左上角退出按钮按位置点击(各主题按钮中心均落在x27-38,y27-36, 该区域在所有主题按钮矩形内)
 	C_BATTLE_EXIT_POSITION = RuleClick(roi_front=(26,24,12,12), roi_back=(26,24,12,12), name="battle_exit_position")
 	# description 
@@ -153,6 +155,10 @@ class GeneralBattleAssets:
 	O_PRESET_FULL = RuleOcr(roi=(20,620,60,80), area=(20,620,60,80), mode="Single", method="Default", keyword="预设", name="preset_full")
 	# 已标记
 	O_BOSS_MARK = RuleOcr(roi=(379,44,50,21), area=(379,44,50,21), mode="Single", method="Default", keyword="已标记", name="boss_mark")
+	# 绿标区域
+	O_GREEN_MARK_AREA = RuleOcr(roi=(84,256,1116,308), area=(84,256,1116,308), mode="Full", method="Default", keyword="", name="green_mark_area")
+	# 战斗结算结果(胜利/失败), 通用主题下主题图不可靠时用文字兜底, OCR 全图扫描
+	O_BATTLE_RESULT = RuleOcr(roi=(0,0,1280,720), area=(0,0,1280,720), mode="Full", method="Default", keyword="", name="battle_result")
 
 
 	# Swipe Rule Assets
@@ -206,6 +212,8 @@ class GeneralBattleAssets:
 	C_END_1_6 = RuleClick(roi_front=(942,175,100,100), roi_back=(942,175,100,100), name="end_1_6")
 	# 贪吃鬼/御魂溢出结算弹窗的排除点击位
 	C_OVERFLOW_GHOST = RuleClick(roi_front=(456,381,160,82), roi_back=(456,381,160,82), name="overflow_ghost")
+	# 结算界面整体区域(兜底排除点击位)
+	C_END_MASTER = RuleClick(roi_front=(251,145,811,530), roi_back=(248,143,815,535), name="end_master")
 	# description 
 	C_END_2_1 = RuleClick(roi_front=(266,310,100,100), roi_back=(266,310,100,100), name="end_2_1")
 	# description 
