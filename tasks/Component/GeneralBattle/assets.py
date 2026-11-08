@@ -235,6 +235,11 @@ class GeneralBattleAssets:
 	# Click Rule Assets
 	# 获得奖励中间的区域 
 	C_END_ACTIVITY_REWARD = RuleClick(roi_front=(400,250,493,226), roi_back=(401,252,494,230), name="end_activity_reward")
+	# 战斗界面空白区域(随机点击避开式神与按钮) 
+	C_RANDOM_LEFT = RuleClick(roi_front=(17,104,55,370), roi_back=(17,104,55,370), name="random_left")
+	C_RANDOM_RIGHT = RuleClick(roi_front=(1185,115,79,388), roi_back=(1185,115,79,388), name="random_right")
+	C_RANDOM_TOP = RuleClick(roi_front=(250,58,868,68), roi_back=(250,58,868,68), name="random_top")
+	C_RANDOM_BOTTOM = RuleClick(roi_front=(462,599,492,78), roi_back=(462,599,492,78), name="random_bottom")
 
 
 	# Image Rule Assets
@@ -244,5 +249,14 @@ class GeneralBattleAssets:
 	I_END_FIX_2 = RuleImage(roi_front=(800,251,100,33), roi_back=(32,90,1137,547), threshold=0.85, method="Template matching", file="./tasks/Component/GeneralBattle/gw/gw_end_fix_2.png")
 	#  
 	I_END_FIX_3 = RuleImage(roi_front=(871,278,150,49), roi_back=(119,66,1136,620), threshold=0.85, method="Template matching", file="./tasks/Component/GeneralBattle/gw/gw_end_fix_3.png")
+	# 战斗中状态信息(用于判定已进入战斗界面) 
+	I_BATTLE_STATE_INFO = RuleImage(roi_front=(725,51,67,31), roi_back=(483,18,337,102), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_battle_state_info.png")
+	# 战斗主题确认 
+	I_GB_SKIN_CONFIRM = RuleImage(roi_front=(594,447,90,55), roi_back=(594,447,90,55), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_gb_skin_confirm.png")
+	# 阵容界面退出 
+	I_GB_CHECK_TEAM_EXIT = RuleImage(roi_front=(507,288,270,54), roi_back=(411,233,452,247), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_gb_check_team_exit.png")
+	# 御魂溢出提示 
+	I_OVER_GHOST = RuleImage(roi_front=(697,409,89,32), roi_back=(697,409,89,32), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/gb/gb_over_ghost.png")
+
 
 
