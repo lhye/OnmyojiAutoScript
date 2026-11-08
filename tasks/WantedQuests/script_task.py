@@ -315,7 +315,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         if not self.appear(self.I_GOTO_1):
             # 如果没有出现 '前往'按钮， 那就是这个可能是神秘任务但是没有解锁
             logger.warning('This is a secret mission but not unlock')
-            self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
+            self.skip_wq_task()
             return False
         # 跳过不想打的
         monster_name = self.O_WQ_MONSTER_TYPE.detect_text(self.device.image)
@@ -323,7 +323,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         if any(name in monster_name for name in self.unwanted_boss_name_list):
             #
             logger.warning(f'unwanted {monster_name}')
-            self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
+            self.skip_wq_task()
             return False
 
         info_wq_list = []
@@ -334,7 +334,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         info_wq_list = [item for item in info_wq_list if item not in self.want_strategy_excluding]
         if not info_wq_list:
             logger.warning('No wanted quests can be challenged')
-            self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
+            self.skip_wq_task()
             return False
         # sort
         info_wq_list.sort(key=lambda x: x[0])
@@ -348,6 +348,13 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         except ExploreWantedBoss:
             logger.warning('The extreme case. The quest only needs to challenge one final boss, so skip it')
             self.want_strategy_excluding.append(info_wq_list[0])
+
+    def skip_wq_task(self):
+        """跳过当前悬赏任务: 取消追踪(任务会从探索页的追踪列表移除) 并关闭任务详情页"""
+        logger.info('Skip this wanted quest')
+        self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
+        # 新版界面取消追踪后详情页不会自动关闭, 不关闭会导致后续 find_wq 一直识别失败
+        self.ui_click_until_disappear(self.C_WQ_TRACE_ONE_CLOSE, interval=1)
 
     def challenge(self, goto_btn, num):
         self.ui_click(goto_btn, self.I_WQC_FIRE)
