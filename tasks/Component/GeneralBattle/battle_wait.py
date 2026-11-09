@@ -403,6 +403,7 @@ class UniversalWaitState:
     ocr_timer: Timer | None = None  # 底部提示 OCR 的 1s 节拍
     end_seen: bool = False  # 是否曾识别到底部通用"点击屏幕继续"
     miss: int = 0  # 连续未识别到"点击屏幕继续"的帧数
+    blind_cnt: int = 0  # 无"点击屏幕继续"的结算页(如秘闻副本)的安全区盲点次数
 
 
 @dataclass
@@ -1208,6 +1209,10 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             if self.appear(self.I_BATTLE_EMBER):
                 # 鬼火重现说明还在战斗
                 return None
+            # 任务收尾标志优先: 已经回到任务地图/庭院时不能继续盲点
+            if self._battle_finish_check() or self.appear(self.I_CHECK_MAIN):
+                logger.info('Battle done, task page arrived')
+                return True
             # 结算时御魂溢出提示, 不关掉会卡住结算
             if self.appear_then_click(self.I_OVER_GHOST, interval=1.5):
                 continue
@@ -1243,9 +1248,11 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                     if uni.miss >= 3:
                         logger.info('Settlement finished')
                         return True
-            if self._battle_finish_check() or self.appear(self.I_CHECK_MAIN):
-                logger.info('Battle done, task page arrived')
-                return True
+                elif uni.blind_cnt < 6:
+                    # 秘闻副本等结算页没有"点击屏幕继续": 在原有安全区(底部居中)盲点推进
+                    logger.info(f'No continue prompt, blind click {uni.blind_cnt + 1}/6')
+                    self.click(self.C_WIN_4, interval=1.5)
+                    uni.blind_cnt += 1
             if uni.timer.reached():
                 logger.warning('Universal battle timeout, treat as win')
                 return True
