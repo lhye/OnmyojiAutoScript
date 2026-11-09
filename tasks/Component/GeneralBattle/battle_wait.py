@@ -1189,14 +1189,15 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         return HookSignal.CONTINUE
 
     def _universal_wait_result_with_state(self, uni: UniversalWaitState, state: PerBattleSuccess = None):
-        """通用主题结算(鬼火消失后): 不判胜负(默认胜利), 只以底部"点击屏幕继续"为推进信号。
+        """通用主题结算(鬼火消失后): 不判胜负(默认胜利), 以底部"点击屏幕继续"为主要推进信号。
         - 每秒 1 次 OCR 底部提示区, 有"点击屏幕继续"就点屏幕推进
-        - 该文字约 3 秒一个渐隐/出现周期, 连续 3 帧都没有才认为结算点击完成
+        - 八岐大蛇/永生之海等副本结算分多页(贪吃鬼吃御魂→御魂列表→金币), 页面切换时提示会消失,
+          因此同时沿用 dev 的领奖图标点击: 出现达摩/金币/蛇皮等结算图标就点排除区推进
+        - 见过提示后, 连续 3 轮既无提示也无结算图标才认为结算点击完成
         :return: True=胜利(默认), None=战斗继续
         """
         logger.info('Universal battle ended, waiting for continue prompt')
         if uni.timer is None:
-            # 魂海完整结算推进(banner→战利品→奖励画面)实测13s+, 原12s贴线误判, 放宽到20s
             uni.timer = Timer(20).start()
         if uni.ocr_timer is None:
             uni.ocr_timer = Timer(1).start()
@@ -1207,6 +1208,9 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             if self.appear(self.I_BATTLE_EMBER):
                 # 鬼火重现说明还在战斗
                 return None
+            # 结算时御魂溢出提示, 不关掉会卡住结算
+            if self.appear_then_click(self.I_OVER_GHOST, interval=1.5):
+                continue
             if uni.ocr_timer.reached():
                 # 单行识别(只跑识别模型, 不做文本检测): 实测 ~0.02s, 比整图检测(0.2s)快一个数量级
                 text = self.O_BATTLE_RESULT.ocr_single_line(self.device.image)
@@ -1219,6 +1223,20 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                     # 点"点击屏幕继续"(点击区仅覆盖该提示文字)
                     self.click(self.C_CONTINUE_PROMPT, interval=1)
                     continue
+                # 领奖画面(达摩/金币/蛇皮): 与 dev 通用逻辑一致, 点排除区推进, 并重置丢失计数
+                # 与 OCR 同节拍检查, 避免每帧做多次模板匹配推高 CPU
+                if state is not None and (
+                        self.appear(self.I_REWARD) or self.appear(self.I_REWARD_GOLD)
+                        or self.appear(self.I_REWARD_GOLD_SNAKE_SKIN)
+                        or self.appear(self.I_GREED_GHOST, threshold=0.6)):
+                    uni.end_seen = True
+                    uni.miss = 0
+                    if state.click_stage_2 is None:
+                        state.click_stage_2 = PerBattleSuccess.reward_exclude_click(
+                            self, OptionSuccessDefault().excludes_2, name='reward_exclude_click_2')
+                    self.click(state.click_stage_2, interval=1.5)
+                    continue
+                # 丢失计数只在 OCR 轮次里累加, 避免按帧(0.3s)加速误判
                 if uni.end_seen:
                     uni.miss += 1
                     logger.info(f'Continue prompt missing x{uni.miss}')

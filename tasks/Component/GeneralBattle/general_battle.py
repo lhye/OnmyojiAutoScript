@@ -438,6 +438,12 @@ class GeneralBattle(BattleWait, GeneralBuff):
         重写本方法识别地图标志提前结束等待, 如Secret的挑战按钮重现"""
         return False
 
+    def click_continue_prompt(self, interval: float = 1.5) -> bool:
+        """停在不认识的界面时, 盲点底部"点击屏幕继续"区域, 推进残留的结算页。
+        任务主循环的未知界面分支调用, 避免空等 60s 触发 GameStuckError。"""
+        logger.info('Unknown page, click continue prompt area')
+        return self.click(self.C_CONTINUE_PROMPT, interval=interval)
+
     def _universal_click_banner(self, count: int = 3, interval: float = 1.5, delay: float = 0) -> None:
         """通用战斗主题: 盲点结算banner区域(胜/败横幅需点击才会消失), 次数上限防止误点底层界面"""
         if delay:

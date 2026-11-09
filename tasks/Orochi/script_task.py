@@ -158,6 +158,12 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
                 continue
 
+            # 房间已解散(队友离开/结算后退出)回到庭院: 直接结束, 否则在庭院上空转60s触发 GameStuckError
+            if self.appear(self.I_CHECK_MAIN):
+                logger.warning('Back to main page, room is gone')
+                success = False
+                break
+
             if self.current_count >= self.limit_count:
                 if self.is_in_room():
                     logger.info('Orochi count limit out')
@@ -176,6 +182,8 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                     logger.warning('Orochi task failed')
                     success = False
                     break
+                # 停在未知界面(结算残留页): 盲点底部"点击屏幕继续"区域推进
+                self.click_continue_prompt()
                 continue
 
             # 点击挑战
@@ -236,6 +244,12 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             if self.check_then_accept():
                 continue
 
+            # 队员在庭院等队长邀请: 这段时间没有任何点击, 主动刷新 stuck 计时, 否则 60s 后被误判卡死重启
+            if self.appear(self.I_CHECK_MAIN):
+                self.device.stuck_record_clear()
+                self.device.stuck_record_add('BATTLE_STATUS_S')
+                continue
+
             if self.is_in_room():
                 self.device.stuck_record_clear()
                 if self.wait_battle(wait_time=self.config.orochi.invite_config.wait_time):
@@ -245,6 +259,9 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             # 队长秒开的时候，检测是否进入到战斗中
             elif self.check_take_over_battle(False, config=self.config.orochi.general_battle_config):
                 continue
+            else:
+                # 停在未知界面(结算残留页): 盲点底部"点击屏幕继续"区域推进
+                self.click_continue_prompt()
 
         while 1:
             # 有一种情况是本来要退出的，但是队长邀请了进入的战斗的加载界面
@@ -344,6 +361,12 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
                 continue
 
+            # 房间已解散(队友离开/结算后退出)回到庭院: 直接结束, 否则在庭院上空转60s触发 GameStuckError
+            if self.appear(self.I_CHECK_MAIN):
+                logger.warning('Back to main page, room is gone')
+                success = False
+                break
+
             if self.current_count >= self.limit_count:
                 if self.is_in_room():
                     logger.info('Orochi count limit out')
@@ -359,6 +382,8 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                     logger.warning('Orochi task failed')
                     success = False
                     break
+                # 停在未知界面(结算残留页): 盲点底部"点击屏幕继续"区域推进
+                self.click_continue_prompt()
                 continue
 
             # 点击挑战
