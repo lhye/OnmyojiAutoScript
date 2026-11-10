@@ -449,7 +449,10 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
 
         """
         self.screenshot()
-        if not self.appear(self.I_WQ_INVITE_1):
+        # 协作任务可能出现在 3 个卡位中的任意一个, 不能只认第 1 张卡
+        if not (self.appear(self.I_WQ_INVITE_1)
+                or self.appear(self.I_WQ_INVITE_2)
+                or self.appear(self.I_WQ_INVITE_3)):
             return False
 
         ret = self.get_cooperation_info()
@@ -550,8 +553,9 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         i = 0
         for index in range(3):
             btn = self.__getattribute__("I_WQ_INVITE_" + str(index + 1))
+            # 该卡位不是协作任务(没有邀请按钮)时跳过, 继续判断后面的卡位
             if not self.appear(btn):
-                break
+                continue
             if self.appear(self.__getattribute__("I_WQ_COOPERATION_TYPE_JADE_" + str(index + 1))):
                 retList.append({'type': CooperationType.Jade, 'inviteBtn': btn})
                 continue
