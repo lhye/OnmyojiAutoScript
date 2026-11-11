@@ -32,7 +32,7 @@ def set_roi_match_padding(pad: int) -> None:
 class RuleImage(RuleImageMallResourceMixin):
     # 匹配失败时打印资产名+分数(同一资产5秒节流), 便于从报错日志定位"哪个资产失配导致卡死"
     # 成功的匹配不打(点击日志已可佐证), 避免日志爆炸
-    debug_mode: bool = True
+    debug_mode: bool = False
 
     def __init__(self, roi_front: tuple, roi_back: tuple, method: str, threshold: float, file: str) -> None:
         """
