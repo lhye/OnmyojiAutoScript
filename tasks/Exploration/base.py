@@ -339,16 +339,36 @@ class BaseExploration(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, Replace
             
         return None
 
+    def read_realm_raid_scrolls(self) -> int:
+        """
+        读取突破券数量，读取不可信时返回 None。
+
+        章节详情页(组队/探索)与探索大地图/章节列表页的顶部布局不同，突破券位置也不同，
+        两处 ROI 都试一次。突破券上限固定 30，total 不是 30 说明 ROI 落在了体力/金币等
+        别的计数上，直接丢弃，避免误判成"券已满"而反复退出探索。
+        """
+        for ocr in (self.O_REALM_RAID_NUMBER1, self.O_REALM_RAID_NUMBER):
+            cu, res, total = ocr.ocr(self.device.image)
+            if total == 30 and 0 <= cu <= 30:
+                return cu
+        return None
+
     def activate_realm_raid(self, con_scrolls, con) -> None:
         # 判断是否开启突破票检测
         if not con_scrolls.scrolls_enable:
             return
-        if self.appear(self.I_E_EXPLORATION_CLICK) and self.appear(self.I_EXP_CREATE_TEAM):
-            cu, res, total = self.O_REALM_RAID_NUMBER1.ocr(self.device.image)
-        else:
-            cu, res, total = self.O_REALM_RAID_NUMBER.ocr(self.device.image)
-        # 判断突破票数量
-        if cu < con_scrolls.scrolls_threshold:
+        scrolls = self.read_realm_raid_scrolls()
+        # 读不到就当作没满，继续探索
+        if scrolls is None or scrolls < con_scrolls.scrolls_threshold:
+            return
+
+        # 达标后再隔 1 秒重截一帧确认：任务刚启动、切皮肤、页面切换动画期间截到的图会瞬时误读，
+        # 单帧读数不可信，只有两次读数一致才认为是真的满了。
+        time.sleep(1)
+        self.screenshot()
+        confirm = self.read_realm_raid_scrolls()
+        if confirm is None or confirm != scrolls:
+            logger.warning(f'RealmRaid scrolls {scrolls} not confirmed by second read: {confirm}, ignore')
             return
 
         # 关闭加成
@@ -370,13 +390,16 @@ class BaseExploration(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, Replace
         # 设置下次执行行时间
         logger.info("RealmRaid and Exploration  set_next_run !")
         next_run = datetime.now() + con_scrolls.scrolls_cd
-        self.set_next_run(task='Exploration', success=False, finish=False, target=next_run)
+        # 这里不能传 success, 否则 failure_interval(通常1分钟)会参与取最小,
+        # 算出的是"任务开始时间+1分钟"(已经过去), 探索会立刻重新排到突破之前,
+        # 形成"进探索-读到突破券达标-退出-再进探索"的死循环, 突破永远排不上。
+        self.set_next_run(task='Exploration', finish=False, target=next_run)
         self.set_next_run(task='RealmRaid', success=False, finish=False, server=False, target=datetime.now())
         self.set_next_run(task='MemoryScrolls', success=False, finish=False, target=datetime.now())
         raise TaskEnd
 
     #
-    def check_exit(self) -> bool:
+    def check_exit(self, check_scrolls: bool = True) -> bool:
         # True 表示要退出这个任务
         if self.minions_cnt >= self._config.exploration_config.minions_cnt:
             logger.info('Minions count is enough, exit')
@@ -384,7 +407,10 @@ class BaseExploration(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, Replace
         if datetime.now() - self.start_time >= self.limit_time:
             logger.info('Exploration time limit out')
             return True
-        self.activate_realm_raid(self._config.scrolls, self._config.exploration_config)
+        # 突破券只在探索大地图(WORLD)判断：章节详情页顶部同一位置显示的是别的计数(会读到 10/30)，
+        # 在那里判断会误以为券已满而反复退出探索。
+        if check_scrolls:
+            self.activate_realm_raid(self._config.scrolls, self._config.exploration_config)
         return False
 
     def quit_explore(self):

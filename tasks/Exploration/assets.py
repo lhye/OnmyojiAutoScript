@@ -151,10 +151,10 @@ class ExplorationAssets:
 	O_E_EXPLORATION_LEVEL_NUMBER = RuleOcr(roi=(1064,206,121,337), area=(1064,206,121,337), mode="Full", method="Default", keyword="", name="e_exploration_level_number")
 	# 候补出战的数量 
 	O_E_ALTERNATE_NUMBER = RuleOcr(roi=(1092,122,69,32), area=(1092,122,69,32), mode="DigitCounter", method="Default", keyword="", name="e_alternate_number")
-	# 探索右上角 突破卷的数量 
-	O_REALM_RAID_NUMBER = RuleOcr(roi=(739,11,78,37), area=(739,11,78,37), mode="DigitCounter", method="Default", keyword="", name="realm_raid_number")
-	# （点出困难28时候）探索右上角 突破卷的数量 
-	O_REALM_RAID_NUMBER1 = RuleOcr(roi=(920,12,78,30), area=(919,12,80,30), mode="DigitCounter", method="Default", keyword="", name="realm_raid_number1")
+	# 探索大地图/章节列表顶部 突破券的数量（实测 0/30 位于 545~645）
+	O_REALM_RAID_NUMBER = RuleOcr(roi=(545,4,100,46), area=(545,4,100,46), mode="DigitCounter", method="Default", keyword="", name="realm_raid_number")
+	# 章节详情（组队/探索按钮）页面右上角 突破券的数量（实测 0/30 位于 920~1050）
+	O_REALM_RAID_NUMBER1 = RuleOcr(roi=(920,4,130,44), area=(920,4,130,44), mode="DigitCounter", method="Default", keyword="", name="realm_raid_number1")
 
 
 	# Swipe Rule Assets

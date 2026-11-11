@@ -145,7 +145,7 @@ class SoloExploration(BaseExploration):
                 self.explore_init = False
                 self._reset_search_state(reset_swipe_cnt=True)
                 self.device.click_record_remove(self.S_SWIPE_BACKGROUND_RIGHT.name)
-                if self.check_exit():
+                if self.check_exit(check_scrolls=False):
                     break
                 self.ui_click(self.I_E_EXPLORATION_CLICK, stop=self.I_E_SETTINGS_BUTTON)
                 continue
