@@ -3,12 +3,12 @@ import threading
 import time
 
 from module.collector.frame_buffer import FrameBuffer
-from module.collector.models import ClickEvent
+from module.collector.models import TouchEvent
 from module.logger import logger
 
 
 class CaptureWorker(threading.Thread):
-    """唯一的截图调用点：滚动帧缓冲、画面变化检测、页面识别、点击后多帧采集
+    """唯一的截图调用点：滚动帧缓冲、画面变化检测、页面识别、动作后多帧采集
 
     device.screenshot() 存在共享状态（self.image 等），必须由本线程独占调用。
     """
@@ -59,7 +59,7 @@ class CaptureWorker(threading.Thread):
                 self._latest = (ts, image)
             self._detect_scene(ts, image)
             self._detect_page(ts, image)
-            self._process_clicks()
+            self._process_touches()
             # device.screenshot() 内部按 interval 节流，这里仅保证停止响应
             self.stop_event.wait(0.05)
 
@@ -89,26 +89,26 @@ class CaptureWorker(threading.Thread):
             logger.info(f'Page: {self._last_page} -> {page.name}')
         self._last_page = page.name
 
-    # ---------------- 点击采集 ----------------
+    # ---------------- 点击 / 滑动采集 ----------------
 
-    def _process_clicks(self):
+    def _process_touches(self):
         while True:
             try:
-                click = self.click_queue.get_nowait()
+                event = self.click_queue.get_nowait()
             except queue.Empty:
                 break
             try:
-                self._capture_click(click)
+                self._capture_touch(event)
             except Exception as e:
-                logger.error(f'Capture click failed: {e}')
+                logger.error(f'Capture touch failed: {e}')
 
-    def _capture_click(self, click: ClickEvent):
-        before = self.buffer.nearest_before(click.ts_press)
+    def _capture_touch(self, event: TouchEvent):
+        before = self.buffer.nearest_before(event.ts_press)
         if before is None:
-            logger.warning(f'No before frame for click {click.event_id}')
+            logger.warning(f'No before frame for {event.kind} {event.event_id}')
             return
 
-        # 点击后多帧：立即 1 帧 + 间隔续拍，帧差稳定（动画结束）提前停止
+        # 动作后多帧：立即 1 帧 + 间隔续拍，帧差稳定（动画结束）提前停止
         after_frames = [(time.time(), self.device.screenshot())]
         early_stop = False
         for _ in range(self.MAX_AFTER_FRAMES):
@@ -128,13 +128,20 @@ class CaptureWorker(threading.Thread):
             page_before = pb.name if pb is not None else 'unknown'
             page_after = pa.name if pa is not None else 'unknown'
 
-        event_id = self.storage.save_click(
-            click,
+        event_id = self.storage.save_touch(
+            event,
             before=(before.ts, before.image),
             after_frames=after_frames,
             meta={'page_before': page_before, 'page_after': page_after, 'early_stop': early_stop},
         )
-        logger.info(
-            f'Click captured {event_id}: ({click.x}, {click.y}) '
-            f'{page_before} -> {page_after}, frames={len(after_frames)}'
-        )
+        if event.kind == 'swipe':
+            logger.info(
+                f'Swipe captured {event_id}: ({event.start_x}, {event.start_y}) -> '
+                f'({event.end_x}, {event.end_y}), {event.duration}s '
+                f'{page_before} -> {page_after}, frames={len(after_frames)}'
+            )
+        else:
+            logger.info(
+                f'Click captured {event_id}: ({event.x}, {event.y}) '
+                f'{page_before} -> {page_after}, frames={len(after_frames)}'
+            )

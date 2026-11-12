@@ -12,6 +12,8 @@ def main():
     parser.add_argument('--interval', type=float, default=0.4, help='截图间隔（秒）')
     parser.add_argument('--base', type=str, default='./log/collector', help='数据存储目录')
     parser.add_argument('--no-page-detect', action='store_true', help='关闭页面识别')
+    parser.add_argument('--swipe-min-distance', type=float, default=30.0,
+                        help='判定为滑动的最小位移（1280x720 逻辑像素），小于该值算点击')
     args = parser.parse_args()
 
     logger.set_file_logger(f'collector_{args.config}')
@@ -23,6 +25,7 @@ def main():
         interval=args.interval,
         base=args.base,
         enable_page_detect=not args.no_page_detect,
+        min_swipe_distance=args.swipe_min_distance,
     )
     service.start()
     try:

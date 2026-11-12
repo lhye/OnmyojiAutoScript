@@ -15,12 +15,12 @@ class CollectorService:
 
     线程模型：
         GeteventListener  getevent 流监听线程 -> click_queue
-        CaptureWorker     唯一截图线程（滚动缓冲 / 帧差 / 页面识别 / 点击多帧采集）
+        CaptureWorker     唯一截图线程（滚动缓冲 / 帧差 / 页面识别 / 动作多帧采集）
         TaskLoop          优先级模式匹配循环（消费 get_latest）
     """
 
     def __init__(self, config, interval: float = 0.4, base: str = './log/collector',
-                 enable_page_detect: bool = True):
+                 enable_page_detect: bool = True, min_swipe_distance: float = 30.0):
         self.device = Device(config=config)
         self.device.disable_stuck_detection()
         self.device.screenshot_interval_set(interval)
@@ -29,7 +29,9 @@ class CollectorService:
         self.stop_event = threading.Event()
         self.click_queue = queue.Queue()
 
-        self.listener = GeteventListener(self.device, self.click_queue, self.stop_event)
+        self.listener = GeteventListener(
+            self.device, self.click_queue, self.stop_event,
+            min_swipe_distance=min_swipe_distance)
         self.page_detector = None
         if enable_page_detect:
             try:

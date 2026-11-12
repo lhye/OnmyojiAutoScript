@@ -4,7 +4,7 @@ import socket
 import threading
 import time
 
-from module.collector.models import ClickEvent
+from module.collector.models import ClickEvent, SwipeEvent, TouchEvent
 from module.logger import logger
 
 # getevent -lt 输出行示例：
@@ -22,16 +22,24 @@ DEVICE_RE = re.compile(r'add device \d+: (\S+)')
 
 
 class GeteventListener(threading.Thread):
-    """监听 Android 触摸输入事件流（adb shell getevent -lt），按下即产出 ClickEvent"""
+    """监听 Android 触摸输入事件流（adb shell getevent -lt）
+
+    在 SYN_REPORT 帧边界判定按下/抬起，抬起时根据位移与耗时产出：
+    - ClickEvent  位移小于 min_swipe_distance
+    - SwipeEvent  位移达到 min_swipe_distance（含逐帧轨迹采样）
+    """
 
     RECONNECT_BACKOFF = 3.0
+    MAX_PATH_POINTS = 300     # 轨迹采样上限，超出后抽稀
 
-    def __init__(self, device, event_queue: queue.Queue, stop_event: threading.Event, screen_size=(1280, 720)):
+    def __init__(self, device, event_queue: queue.Queue, stop_event: threading.Event,
+                 screen_size=(1280, 720), min_swipe_distance: float = 30.0):
         super().__init__(daemon=True, name='GeteventListener')
         self.device = device
         self.event_queue = event_queue
         self.stop_event = stop_event
         self.screen_size = screen_size
+        self.min_swipe_distance = min_swipe_distance
         self.epoch = None        # 设备 uptime 与本地时间的换算基准
         self.panels = []         # 触摸设备路径列表
         self.max_x = None
@@ -43,6 +51,12 @@ class GeteventListener(threading.Thread):
         self._frame_press = False
         self._frame_release = False
         self._conn = None
+        # 当前触摸过程（按下 -> 抬起）
+        self._pressed = False
+        self._press_panel = ''
+        self._press_ts = 0.0
+        self._press_raw = (-1, -1)
+        self._path = []
 
     # ---------------- 标定 ----------------
 
@@ -151,17 +165,17 @@ class GeteventListener(threading.Thread):
             buf += chunk
             *lines, buf = buf.split(b'\n')
             for raw_line in lines:
-                click = self._parse_line(raw_line.decode(errors='ignore'))
-                if click is not None:
-                    self.event_queue.put_nowait(click)
+                event = self._parse_line(raw_line.decode(errors='ignore'))
+                if event is not None:
+                    self.event_queue.put_nowait(event)
 
-    def _parse_line(self, line: str) -> ClickEvent:
-        """解析一行事件；在 SYN_REPORT 帧边界判定触摸按下/抬起，按下时返回 ClickEvent
+    def _parse_line(self, line: str) -> TouchEvent:
+        """解析一行事件；在 SYN_REPORT 帧边界判定触摸按下/抬起
 
         兼容两种协议：
         - MuMu 等模拟器：ABS_MT_TRACKING_ID >= 0 为按下，ffffffff(-1) 为抬起，无 BTN_TOUCH
         - 真机常见协议：BTN_TOUCH DOWN/UP
-        坐标事件先于 SYN_REPORT 到达，因此统一在帧边界发射，确保 X/Y 已到齐。
+        坐标事件先于 SYN_REPORT 到达，因此统一在帧边界处理，确保 X/Y 已到齐。
         """
         m = LINE_RE.match(line)
         if not m:
@@ -190,14 +204,71 @@ class GeteventListener(threading.Thread):
                 self._frame_release = True
             self._btn_touch = down
         elif etype == 'SYN' and code == 'SYN_REPORT':
+            ts = self._to_local_ts(float(m['ts']))
             event = None
             if self._frame_press:
-                ts = self._to_local_ts(float(m['ts']))
-                x, y = self._scale(self._x_raw, self._y_raw)
-                event = ClickEvent(ts_press=ts, panel=m['dev'], x_raw=self._x_raw, y_raw=self._y_raw, x=x, y=y)
-            elif self._frame_release:
-                self._x_raw, self._y_raw = -1, -1
+                self._on_press(ts, m['dev'])
+            if self._pressed:
+                self._append_path()
+            if self._frame_release and self._pressed:
+                event = self._on_release(ts)
             self._frame_press = False
             self._frame_release = False
             return event
         return None
+
+    # ---------------- 触摸过程 ----------------
+
+    def _on_press(self, ts: float, panel: str):
+        self._pressed = True
+        self._press_panel = panel
+        self._press_ts = ts
+        self._press_raw = (self._x_raw, self._y_raw)
+        start_x, start_y = self._scale(*self._press_raw)
+        self._path = [[start_x, start_y]]
+
+    def _append_path(self):
+        x, y = self._scale(self._x_raw, self._y_raw)
+        if self._path:
+            last_x, last_y = self._path[-1]
+            if abs(x - last_x) < 0.5 and abs(y - last_y) < 0.5:
+                return
+        if len(self._path) >= self.MAX_PATH_POINTS:
+            # 抽稀一半，保留起点，避免无限增长
+            self._path = self._path[::2]
+        self._path.append([x, y])
+
+    def _on_release(self, ts: float) -> TouchEvent:
+        start_x, start_y = self._scale(*self._press_raw)
+        end_x, end_y = self._scale(self._x_raw, self._y_raw)
+        end_raw = (self._x_raw, self._y_raw)
+
+        dx, dy = end_x - start_x, end_y - start_y
+        distance = (dx * dx + dy * dy) ** 0.5
+        self._pressed = False
+        self._x_raw, self._y_raw = -1, -1
+
+        if distance >= self.min_swipe_distance:
+            return SwipeEvent(
+                ts_press=self._press_ts,
+                ts_release=ts,
+                panel=self._press_panel,
+                start_x_raw=self._press_raw[0],
+                start_y_raw=self._press_raw[1],
+                end_x_raw=end_raw[0],
+                end_y_raw=end_raw[1],
+                start_x=start_x,
+                start_y=start_y,
+                end_x=end_x,
+                end_y=end_y,
+                path=self._path,
+            )
+        return ClickEvent(
+            ts_press=self._press_ts,
+            ts_release=ts,
+            panel=self._press_panel,
+            x_raw=self._press_raw[0],
+            y_raw=self._press_raw[1],
+            x=start_x,
+            y=start_y,
+        )
