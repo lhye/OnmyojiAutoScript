@@ -84,6 +84,19 @@ class SessionData:
         self.annotations.setdefault(event_id, {})['semantic'] = text
         self.annotations[event_id]['updated'] = time.time()
 
+    def page(self, step: dict) -> str:
+        """步骤页面：优先使用手动标注，其次采集时自动识别的动作前页面"""
+        manual = (self.annotations.get(step['event_id']) or {}).get('page', '').strip()
+        return manual or step.get('page_before', 'unknown')
+
+    def set_page(self, event_id: str, text: str):
+        text = text.strip()
+        if text and text != 'unknown':
+            self.annotations.setdefault(event_id, {})['page'] = text
+        else:
+            self.annotations.setdefault(event_id, {}).pop('page', None)
+        self.annotations[event_id]['updated'] = time.time()
+
     def save_annotations(self):
         payload = {'version': 1, 'session': self.path.name, 'items': self.annotations}
         file = self.path / 'annotations.json'
@@ -97,6 +110,9 @@ class SessionData:
 
     def before_image(self, step: dict) -> Path:
         return self.event_dir(step) / 'before.png'
+
+    def after_images(self, step: dict) -> list[Path]:
+        return sorted(self.event_dir(step).glob('after_*.png'))
 
     def after_image(self, step: dict) -> Path:
         folder = self.event_dir(step)
@@ -313,7 +329,13 @@ class EditorWindow(QMainWindow):
         before_box = QGroupBox('动作前（标记点击点 / 滑动方向）')
         QVBoxLayout(before_box).addWidget(self.before_view)
         after_box = QGroupBox('动作后')
-        QVBoxLayout(after_box).addWidget(self.after_view)
+        after_layout = QVBoxLayout(after_box)
+        after_layout.addWidget(self.after_view)
+        self.after_combo = QComboBox()
+        self.after_combo.setToolTip('动作后补拍的多帧，可切换查看（滑动默认显示动作结束瞬间，点击默认显示最后一帧）')
+        self.after_combo.currentIndexChanged.connect(self._on_after_frame_changed)
+        self.after_combo.setVisible(False)
+        after_layout.addWidget(self.after_combo)
         previews.addWidget(before_box, 3)
         previews.addWidget(after_box, 2)
         right_layout.addLayout(previews, 3)
@@ -322,6 +344,17 @@ class EditorWindow(QMainWindow):
         self.detail_label.setWordWrap(True)
         self.detail_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         right_layout.addWidget(self.detail_label)
+
+        page_row = QHBoxLayout()
+        page_row.addWidget(QLabel('页面'))
+        self.page_combo = QComboBox()
+        self.page_combo.setEditable(True)
+        self.page_combo.setInsertPolicy(QComboBox.NoInsert)
+        self.page_combo.setMinimumWidth(240)
+        self.page_combo.lineEdit().setPlaceholderText('自动识别不出时可手动填写，如 page_realm_raid')
+        self.page_combo.currentTextChanged.connect(self._on_page_changed)
+        page_row.addWidget(self.page_combo, 1)
+        right_layout.addLayout(page_row)
 
         semantic_box = QGroupBox('语义说明（给 AI 的步骤描述，例如：点击挑战按钮进入战斗准备）')
         semantic_layout = QVBoxLayout(semantic_box)
@@ -346,6 +379,7 @@ class EditorWindow(QMainWindow):
         self.before_view.setEnabled(enabled)
         self.after_view.setEnabled(enabled)
         self.semantic_edit.setEnabled(enabled)
+        self.page_combo.setEnabled(enabled)
 
     # ---------------- 会话 ----------------
 
@@ -378,6 +412,8 @@ class EditorWindow(QMainWindow):
             return
         self.session = load_session(self.base / name)
         self.current_index = None
+        self._after_paths: list[Path] = []
+        self._populate_pages()
         self._rebuild_list()
         if self.step_list.count():
             self.step_list.setCurrentRow(0)
@@ -426,7 +462,11 @@ class EditorWindow(QMainWindow):
             action = (f"滑动{swipe_direction(dx, dy)}  "
                       f"({step['start_x']:.0f},{step['start_y']:.0f}) → "
                       f"({step['end_x']:.0f},{step['end_y']:.0f})")
-        page = f"{step.get('page_before', '?')} → {step.get('page_after', '?')}"
+        manual = self.session.page(step)
+        if manual != step.get('page_before', 'unknown'):
+            page = f'{manual}（手动）'
+        else:
+            page = f"{step.get('page_before', '?')} → {step.get('page_after', '?')}"
         tail = semantic[:26] if semantic else '（未标注）'
         return f'#{index + 1:02d}  {action}\n{page} · {tail}'
 
@@ -440,24 +480,93 @@ class EditorWindow(QMainWindow):
         step = self.session.steps[index]
         self._set_detail_enabled(True)
         self.before_view.set_preview(self.session.before_image(step), step)
-        self.after_view.set_preview(self.session.after_image(step), None)
+        # 动作后为多帧：滑动默认看结束瞬间，点击默认看最后一帧，可在下拉框切换
+        self._after_paths = self.session.after_images(step)
+        base_ts = step.get('ts_release', step.get('ts_press', step.get('ts', 0)))
+        after_ts = step.get('after_ts') or []
+        self.after_combo.blockSignals(True)
+        self.after_combo.clear()
+        for i in range(len(self._after_paths)):
+            offset = after_ts[i] - base_ts if i < len(after_ts) else 0.0
+            self.after_combo.addItem(
+                f'第 {i + 1}/{len(self._after_paths)} 帧  +{offset:.1f}s', i
+            )
+        default = 0 if step['kind'] == 'swipe' else max(len(self._after_paths) - 1, 0)
+        self.after_combo.setCurrentIndex(default)
+        self.after_combo.blockSignals(False)
+        self.after_combo.setVisible(len(self._after_paths) > 1)
+        self._update_after_view()
         self.title_label.setText(f"#{index + 1:02d}  {KIND_LABEL[step['kind']]}")
         self.detail_label.setText(self._detail_text(step))
         self.semantic_edit.blockSignals(True)
         self.semantic_edit.setPlainText(self.session.semantic(step['event_id']))
         self.semantic_edit.blockSignals(False)
+        self.page_combo.blockSignals(True)
+        self.page_combo.setCurrentText(self.session.page(step))
+        self.page_combo.blockSignals(False)
+
+    def _populate_pages(self):
+        """下拉框候选：本会话中出现过的页面 + 已手动填写的页面"""
+        names = set()
+        for step in self.session.steps:
+            for key in ('page_before', 'page_after'):
+                name = step.get(key)
+                if name and name != 'unknown':
+                    names.add(name)
+            manual = (self.session.annotations.get(step['event_id']) or {}).get('page', '')
+            if manual:
+                names.add(manual)
+        current = self.page_combo.currentText()
+        self.page_combo.blockSignals(True)
+        self.page_combo.clear()
+        self.page_combo.addItems(sorted(names))
+        self.page_combo.setCurrentText(current)
+        self.page_combo.blockSignals(False)
+
+    def _on_page_changed(self, text: str):
+        if self.session is None or self.current_index is None:
+            return
+        step = self.session.steps[self.current_index]
+        self.session.set_page(step['event_id'], text)
+        self._dirty = True
+        self._save_timer.start(700)
+        self._refresh_current_item()
+
+    def _update_after_view(self):
+        if not self._after_paths:
+            return
+        index = self.after_combo.currentIndex()
+        index = index if 0 <= index < len(self._after_paths) else 0
+        self.after_view.set_preview(self._after_paths[index], None)
+
+    def _on_after_frame_changed(self, _index: int):
+        self._update_after_view()
+
+    @staticmethod
+    def _timing_text(step: dict) -> str:
+        parts = []
+        age_ms = step.get('before_age_ms')
+        if age_ms is not None:
+            stale = '（偏旧，画面可能不是紧邻动作前）' if age_ms > 1500 else ''
+            parts.append(f'动作前帧距动作 {age_ms / 1000:.1f}s{stale}')
+        after_ts = step.get('after_ts') or []
+        if after_ts:
+            end = step.get('ts_release', step.get('ts_press', after_ts[0]))
+            parts.append(f'动作后 {len(after_ts)} 帧，末帧 +{max(after_ts[-1] - end, 0):.1f}s')
+        return ('    ' + '    '.join(parts)) if parts else ''
 
     @staticmethod
     def _detail_text(step: dict) -> str:
         page = f"页面：{step.get('page_before', '?')} → {step.get('page_after', '?')}"
+        timing = EditorWindow._timing_text(step)
         ts = time.strftime('%H:%M:%S', time.localtime(step.get('ts_press', step.get('ts', 0))))
         if step['kind'] == 'click':
-            return f"时间 {ts}    坐标 ({step['x']:.0f}, {step['y']:.0f})    {page}"
+            return f"时间 {ts}    坐标 ({step['x']:.0f}, {step['y']:.0f})    {page}{timing}"
         dx, dy = step['end_x'] - step['start_x'], step['end_y'] - step['start_y']
         return (f"时间 {ts}    起点 ({step['start_x']:.0f}, {step['start_y']:.0f}) → "
                 f"终点 ({step['end_x']:.0f}, {step['end_y']:.0f})    "
                 f"方向 {swipe_direction(dx, dy)}    "
-                f"时长 {step.get('duration', 0):.2f}s    距离 {step.get('distance', 0):.0f}px    {page}")
+                f"时长 {step.get('duration', 0):.2f}s    距离 {step.get('distance', 0):.0f}px    {page}{timing}")
 
     # ---------------- 标注 ----------------
 
@@ -516,6 +625,7 @@ class EditorWindow(QMainWindow):
                 'type': step['kind'],
                 'event_id': step['event_id'],
                 'time': time.strftime('%H:%M:%S', time.localtime(step.get('ts_press', step.get('ts', 0)))),
+                'page': self.session.page(step),
                 'page_before': step.get('page_before', ''),
                 'page_after': step.get('page_after', ''),
                 'semantic': semantic,
@@ -581,7 +691,7 @@ class EditorWindow(QMainWindow):
                 lines.append(f"- 轨迹：({step['start'][0]:.0f}, {step['start'][1]:.0f}) → "
                              f"({step['end'][0]:.0f}, {step['end'][1]:.0f})，"
                              f"方向 {step['direction']}，时长 {step['duration']:.2f}s")
-            lines.append(f"- 页面：{step['page_before']} → {step['page_after']}")
+            lines.append(f"- 页面：{step['page']}")
             lines.append(f"- 画面：`{step['before_image']}`")
             lines.append('')
         path = self.session.path / 'sequence.md'

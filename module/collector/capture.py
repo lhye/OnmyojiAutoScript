@@ -18,6 +18,7 @@ class CaptureWorker(threading.Thread):
     SCENE_NOTIFY_INTERVAL = 10.0  # scene_change 事件节流（秒）
     AFTER_INTERVAL = 0.5          # 点击后补帧间隔（秒）
     MAX_AFTER_FRAMES = 4          # 点击后最多补帧数（另有立即 1 帧）
+    PAGE_DETECT_EVERY = 5         # 每 N 帧做一次页面识别（单次识别可达数百毫秒）
 
     def __init__(self, device, storage, click_queue: queue.Queue, stop_event: threading.Event,
                  interval: float = 0.4, page_detector=None):
@@ -34,6 +35,7 @@ class CaptureWorker(threading.Thread):
         self._prev_image = None
         self._last_scene_ts = 0.0
         self._last_page = None
+        self._frame_count = 0
 
     # ---------------- 对外接口 ----------------
 
@@ -57,9 +59,20 @@ class CaptureWorker(threading.Thread):
             self.buffer.push(ts, image)
             with self._frame_lock:
                 self._latest = (ts, image)
+            self._frame_count += 1
+            if self._frame_count == 1:
+                logger.info(f'Capture first frame: {image.shape}')
+            elif self._frame_count % 25 == 0:
+                logger.info(
+                    f'Capture alive: frames={self._frame_count}, '
+                    f'queue={self.click_queue.qsize()}, page={self._last_page}'
+                )
             self._detect_scene(ts, image)
-            self._detect_page(ts, image)
+            # 先处理待采集动作，保证动作后补帧尽早开始
             self._process_touches()
+            # 页面识别较慢（几十到几百毫秒），按间隔抽样执行
+            if self._frame_count % self.PAGE_DETECT_EVERY == 0:
+                self._detect_page(ts, image)
             # device.screenshot() 内部按 interval 节流，这里仅保证停止响应
             self.stop_event.wait(0.05)
 
@@ -77,7 +90,14 @@ class CaptureWorker(threading.Thread):
     def _detect_page(self, ts: float, image):
         if self.page_detector is None:
             return
-        page = self.page_detector.detect(image)
+        try:
+            page = self.page_detector.detect(image)
+        except Exception as e:
+            # 页面识别异常不能让采集线程退出
+            if not getattr(self, '_page_error_logged', False):
+                self._page_error_logged = True
+                logger.warning(f'Page detect error, ignored: {e}')
+            return
         if page is None:
             return
         if self._last_page is not None and page.name != self._last_page:
@@ -109,7 +129,9 @@ class CaptureWorker(threading.Thread):
             return
 
         # 动作后多帧：立即 1 帧 + 间隔续拍，帧差稳定（动画结束）提前停止
+        # 补帧同时写入滚动缓冲，避免连续操作时“动作前”画面越拖越旧
         after_frames = [(time.time(), self.device.screenshot())]
+        self.buffer.push(*after_frames[0])
         early_stop = False
         for _ in range(self.MAX_AFTER_FRAMES):
             self.stop_event.wait(self.AFTER_INTERVAL)
@@ -117,16 +139,18 @@ class CaptureWorker(threading.Thread):
                 break
             image = self.device.screenshot()
             after_frames.append((time.time(), image))
+            self.buffer.push(*after_frames[-1])
             if FrameBuffer.diff(after_frames[-1][1], after_frames[-2][1]) < self.STABLE_THRESHOLD:
                 early_stop = True
                 break
 
-        page_before = page_after = 'unknown'
+        # 动作前页面复用最近一次抽样识别的结果，避免每个动作多做一次全量识别
+        page_before = self._last_page or 'unknown'
+        page_after = page_before
         if self.page_detector is not None:
-            pb = self.page_detector.detect(before.image)
             pa = self.page_detector.detect(after_frames[-1][1])
-            page_before = pb.name if pb is not None else 'unknown'
-            page_after = pa.name if pa is not None else 'unknown'
+            if pa is not None:
+                page_after = pa.name
 
         event_id = self.storage.save_touch(
             event,
