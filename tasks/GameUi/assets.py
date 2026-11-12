@@ -149,6 +149,8 @@ class GameUiAssets:
 	I_CHECK_MALL_PURPLE = RuleImage(roi_front=(231,455,131,78), roi_back=(201,432,185,121), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_mall_purple.png")
 	# 商店推荐页面标志 
 	I_CHECK_MALL_RECOMMEND = RuleImage(roi_front=(930,12,42,37), roi_back=(905,0,100,100), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_mall_recommend.png")
+	# 商店推荐页面标志(备用): 顶部魂玉图标会被跑马灯聊天遮住, 用街道上的"热力推荐"招牌兜底
+	I_CHECK_MALL_CITY = RuleImage(roi_front=(725,170,90,110), roi_back=(690,140,170,180), threshold=0.85, method="Template matching", file="./tasks/GameUi/page/page_check_mall_city.png")
 	# 阴阳寮页面标志 
 	I_CHECK_GUILD = RuleImage(roi_front=(1072,630,49,46), roi_back=(1072,630,49,46), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_guild.png")
 	# 组队页面标志 

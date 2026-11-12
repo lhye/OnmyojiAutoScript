@@ -101,7 +101,7 @@ page_mall.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CH
 page_mall.add_enter_success_hooks(GameUiAssets.I_AD_CLOSE_RED, GlobalGameAssets.I_UI_BACK_RED, GlobalGameAssets.I_UI_CANCEL_SAMLL)
 page_mall.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_mall->page_main")
 
-page_mall_recommend = Page(GameUiAssets.I_CHECK_MALL_RECOMMEND, category="global")
+page_mall_recommend = Page([GameUiAssets.I_CHECK_MALL_RECOMMEND, GameUiAssets.I_CHECK_MALL_CITY], category="global")
 page_mall_recommend.add_enter_success_hooks(GameUiAssets.I_AD_CLOSE_RED, GlobalGameAssets.I_UI_BACK_RED,
                                             GlobalGameAssets.I_UI_CANCEL_SAMLL)
 page_mall_recommend.connect(page_mall, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_mall_recommend->page_mall")
