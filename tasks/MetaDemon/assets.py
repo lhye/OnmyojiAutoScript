@@ -100,18 +100,20 @@ class MetaDemonAssets:
 
 
 	# ==================== 新版超鬼王（祸至无日） ====================
-	# 右侧活动栏 - 超鬼王活动入口图标（蓝色漩涡+超鬼王竖排字）
-	I_MD_ACTIVITY_ICON = RuleImage(roi_front=(1172,204,84,70), roi_back=(1090,90,190,320), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_activity_icon.png")
+	# 庭院右侧栏 - 超鬼王活动入口图标（蓝色漩涡+超鬼王竖排字），有则直接进主界面
+	I_MD_ACTIVITY_ICON = RuleImage(roi_front=(1172,204,84,70), roi_back=(1130,120,150,540), threshold=0.85, method="Template matching", file="./tasks/MetaDemon/md/md_activity_icon.png")
 	# 活动主界面标题（祸主降临）
-	I_MD_MAIN_TITLE = RuleImage(roi_front=(30,0,250,60), roi_back=(20,0,300,70), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_main_title.png")
+	I_MD_MAIN_TITLE = RuleImage(roi_front=(30,0,250,60), roi_back=(20,0,300,70), threshold=0.9, method="Template matching", file="./tasks/MetaDemon/md/md_main_title.png")
+	# 活动大厅（立绘）右侧「超鬼王」书签入口（大厅左上角也是活动名横幅，所以标题阈值必须收紧到 0.9）
+	I_MD_ACT_ENTER = RuleImage(roi_front=(996,168,40,104), roi_back=(930,120,130,200), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_act_enter.png")
 	# 每日首次奖励-领取
 	I_MD_DAILY_RECEIVE = RuleImage(roi_front=(720,522,240,90), roi_back=(600,470,450,180), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_daily_receive.png")
 	# 合成界面标题（裂变之眼合成）
 	I_MD_CRAFT_TITLE = RuleImage(roi_front=(545,40,340,65), roi_back=(500,20,420,100), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_craft_title.png")
 	# 一星裂变之眼行
 	I_MD_CRAFT_ROW_1 = RuleImage(roi_front=(200,128,350,132), roi_back=(150,100,460,220), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_craft_row1.png")
-	# 预设行（预设：未设置）
-	I_MD_PRESET_ROW = RuleImage(roi_front=(1035,425,215,55), roi_back=(1000,395,250,100), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_preset_row.png")
+	# 预设行右端的群体图标（行内文字会变：预设：未设置 / 【DayN】群体，所以只认图标）
+	I_MD_PRESET_ROW = RuleImage(roi_front=(1216,421,40,34), roi_back=(1040,408,235,60), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_preset_row.png")
 	# 召唤队列弹窗标题
 	I_MD_SUMMON_TITLE = RuleImage(roi_front=(420,135,490,65), roi_back=(380,110,560,120), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_summon_title.png")
 	# 召唤队列 - 低星卡片图标（1~2星同图标，浅色）
@@ -122,30 +124,38 @@ class MetaDemonAssets:
 	I_MD_CARD_HIGH = RuleImage(roi_front=(754,306,73,61), roi_back=(340,300,600,80), threshold=0.85, method="Template matching", file="./tasks/MetaDemon/md/md_summon_high.png")
 	# 队伍租借 - 活动分类
 	I_MD_TEAM_TAB_ACTIVITY = RuleImage(roi_front=(515,335,105,62), roi_back=(480,300,180,220), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_team_tab_activity.png")
-	# 队伍租借 - 第一套队伍
-	I_MD_TEAM_FIRST = RuleImage(roi_front=(630,220,415,90), roi_back=(600,200,470,340), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_team_first.png")
 	# 队伍租借 - 出战
-	I_MD_TEAM_BATTLE = RuleImage(roi_front=(690,535,205,85), roi_back=(650,505,290,140), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_team_battle.png")
+	I_MD_TEAM_BATTLE = RuleImage(roi_front=(770,552,152,50), roi_back=(740,525,220,80), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_team_battle.png")
 	# 每日补给面板标题（首次进入才出现，已领取时直接关闭）
 	I_MD_SUPPLY_TITLE = RuleImage(roi_front=(570,142,300,84), roi_back=(530,120,370,130), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_supply_title.png")
 	# 召唤成功后右下角的「挑战」按钮（召唤鬼王状态时文字不同，不会命中）
 	I_MD_CHALLENGE = RuleImage(roi_front=(1108,526,118,90), roi_back=(1060,500,220,160), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_challenge.png")
+	# 「2.5倍伤害」强力的勾选状态（勾选时需在战斗前取消）
+	I_MD_BOOST_ON = RuleImage(roi_front=(1112,504,38,38), roi_back=(1060,480,220,90), threshold=0.85, method="Template matching", file="./tasks/MetaDemon/md/md_boost_on.png")
 
 	# Ocr Rule Assets
 	# 疲劳度（右上角 0/100）
 	O_MD_EXHAUSTION_NEW = RuleOcr(roi=(1115,10,165,40), area=(1115,10,165,40), mode="DigitCounter", method="Default", keyword="", name="md_exhaustion_new")
 	# 礼包价格（只框住"30"两个数字，避开左侧勾玉图标）
 	O_MD_SHOP_PRICE = RuleOcr(roi=(1092,310,40,32), area=(1092,310,40,32), mode="Single", method="Default", keyword="30", name="md_shop_price")
+	# 合成界面底部「合成券：N」的数字部分，为 0 时点开始合成会直接跳到宠梦礼包
+	O_MD_CRAFT_TICKET = RuleOcr(roi=(935,600,110,55), area=(935,600,110,55), mode="Single", method="Default", keyword="", name="md_craft_ticket")
 	# 礼包限购（每天限购0/5次）
 	O_MD_SHOP_LIMIT = RuleOcr(roi=(1015,270,215,40), area=(1015,270,215,40), mode="Single", method="Default", keyword="", name="md_shop_limit")
 	# 合成界面一星持有数（只框"持有：N"，避开左侧道具图标）
-	O_MD_CRAFT_STOCK = RuleOcr(roi=(305,190,175,26), area=(305,190,175,26), mode="Single", method="Default", keyword="", name="md_craft_stock")
+	O_MD_CRAFT_STOCK = RuleOcr(roi=(300,175,220,75), area=(300,175,220,75), mode="Single", method="Default", keyword="", name="md_craft_stock")
 
 	# Click Rule Assets
 	# 礼包入口
 	C_MD_GIFT = RuleClick(roi_front=(1227,141,4,4), roi_back=(1227,141,4,4), name="md_gift")
 	# 合成入口
 	C_MD_CRAFT = RuleClick(roi_front=(1240,227,4,4), roi_back=(1240,227,4,4), name="md_craft")
+	# 队伍租借 - 第一套队伍（行内文字会随日期变化，用固定点）
+	C_MD_TEAM_FIRST = RuleClick(roi_front=(981,252,4,4), roi_back=(981,252,4,4), name="md_team_first")
+	# 「超鬼王」书签的实际可点区域靠下，点击点固定
+	C_MD_ACT_ENTER = RuleClick(roi_front=(1013,250,4,4), roi_back=(1013,250,4,4), name="md_act_enter_click")
+	# 活动大厅开场立绘：点书签无反应时点画面中央推进
+	C_MD_LOBBY_SKIP = RuleClick(roi_front=(640,330,4,4), roi_back=(640,330,4,4), name="md_lobby_skip")
 	# 召唤队列入口（全部队列右侧图标）
 	C_MD_QUEUE = RuleClick(roi_front=(1246,514,4,4), roi_back=(1246,514,4,4), name="md_queue")
 	# 礼包 - 30勾玉购买按钮（列表内）

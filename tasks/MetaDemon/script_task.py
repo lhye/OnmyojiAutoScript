@@ -36,7 +36,8 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
 
     def md_enter_activity(self):
         logger.hr('超鬼王 进入活动', 2)
-        timer = Timer(20).start()
+        timer = Timer(60).start()
+        lobby_click = 0
         while 1:
             self.screenshot()
             if self.appear(self.I_MD_MAIN_TITLE):
@@ -45,10 +46,22 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
                 logger.warning('进入超鬼王活动界面超时')
                 self.set_next_run(task="MetaDemon", success=False)
                 raise TaskEnd
+            # 庭院：右侧栏里已有超鬼王图标则直接点，一步进主界面
             if self.appear_then_click(self.I_MD_ACTIVITY_ICON, interval=1.5):
                 continue
-            # 活动图标不在可视区域时展开右侧活动栏
-            if self.appear_then_click(self.I_TOGGLE_BUTTON, interval=1.5):
+            # 庭院：点「活动」进入活动总览
+            if self.appear_then_click(self.I_ACT_LIST_EXPAND, interval=1.5):
+                continue
+            # 活动总览：点「前往活动」
+            if self.appear_then_click(self.I_ACT_LIST_GOTO_ACT, interval=1.5):
+                continue
+            # 活动大厅（立绘）：点右侧「超鬼王」书签（可点区域靠下）
+            if self.appear_then_click(self.I_MD_ACT_ENTER, action=self.C_MD_ACT_ENTER, interval=1.5):
+                lobby_click += 1
+                # 书签点了两次仍在大厅，说明开场立绘还没结束，点画面中央推进
+                if lobby_click >= 2:
+                    lobby_click = 0
+                    self.click(self.C_MD_LOBBY_SKIP)
                 continue
             sleep(0.5)
 
@@ -116,6 +129,17 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         if not self.wait_until_appear(self.I_MD_CRAFT_TITLE, wait_time=6):
             logger.warning('未进入合成界面，跳过合成')
             return
+        self.screenshot()
+        ticket = self.md_craft_ticket()
+        if ticket == 0:
+            # 券为 0 时点开始合成会让游戏直接跳到宠梦礼包，随后所有主界面识别都会超时
+            logger.info('合成券为 0，跳过合成')
+            self.md_close_craft()
+            return
+        # 列表会记住上次滚动位置，先拉回顶部，保证第一行是一星
+        for _ in range(2):
+            self.device.swipe(p1=(300, 180), p2=(300, 420), duration=(0.3, 0.4))
+            sleep(0.5)
         prev_stock = None
         same_count = 0
         for _ in range(15):
@@ -146,17 +170,41 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
             sleep(0.8)  # 选中一星行后游戏会自动放入3个，不要再点一键卸载
             self.click(self.C_MD_CRAFT_START)
             sleep(1.8)
+            self.screenshot()
+            if not self.appear(self.I_MD_CRAFT_TITLE):
+                # 券不足时游戏直接跳到宠梦礼包，合成界面已经不在了
+                logger.warning('点开始合成后离开了合成界面（合成券不足），关闭礼包页')
+                self.click(self.C_MD_CLOSE)
+                sleep(1)
+                break
             self.click(self.C_MD_CRAFT_RESULT)  # 关闭合成结果弹窗
             sleep(1)
+        self.md_close_craft()
+
+    def md_close_craft(self):
+        self.screenshot()
+        if not self.appear(self.I_MD_CRAFT_TITLE):
+            return
         self.click(self.C_MD_CLOSE_CRAFT)
-        sleep(1)
+        # 右侧图标会透过半透明合成面板显示，必须等标题消失才算真正关闭
+        timer = Timer(5).start()
+        while 1:
+            self.screenshot()
+            if not self.appear(self.I_MD_CRAFT_TITLE):
+                break
+            if timer.reached():
+                break
+            sleep(0.5)
+        sleep(0.5)
 
     def md_setup_team(self):
         logger.hr('超鬼王 队伍预设', 2)
         self.md_wait_main()
-        if not self.md_click_rule(self.I_MD_PRESET_ROW):
+        # 合成界面关闭有动画，预设行可能晚一点才出现，轮询等待
+        if not self.wait_until_appear(self.I_MD_PRESET_ROW, wait_time=10):
             logger.warning('未找到预设入口，跳过队伍设置')
             return
+        self.click(self.I_MD_PRESET_ROW)
         if not self.wait_until_appear(self.I_MD_TEAM_TAB_ACTIVITY, wait_time=6):
             logger.warning('队伍面板未打开，跳过队伍设置')
             return
@@ -164,8 +212,8 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         sleep(1)
         switched = False
         for _ in range(2):
-            if not self.md_click_rule(self.I_MD_TEAM_FIRST):
-                break
+            # 第一队行内文字会随日期变化（【Day1】/【Day2】群体阵容），用固定点点击
+            self.click(self.C_MD_TEAM_FIRST)
             sleep(1.2)
             if self.appear(self.I_UI_CONFIRM):
                 self.click(self.I_UI_CONFIRM)
@@ -178,7 +226,7 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
     def md_battle_loop(self):
         logger.hr('超鬼王 召唤与战斗循环', 2)
         while 1:
-            if not self.md_wait_main(timeout=30):
+            if not self.md_return_main():
                 logger.warning('战斗后未回到活动界面')
                 self.set_next_run(task="MetaDemon", success=False)
                 raise TaskEnd
@@ -206,11 +254,19 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
             logger.info(f'召唤 {star} 星裂变之眼')
             self.click(self.C_MD_SUMMON_NOW)
             sleep(2)
-            # 召唤成功后鬼王出现在场景中，再点右下角「挑战」进入战斗
+            # 召唤成功后鬼王出现在场景中，先取消「2.5倍伤害」强力，再点右下角「挑战」进战斗
             if not self.wait_until_appear(self.I_MD_CHALLENGE, wait_time=10):
                 logger.warning('召唤后未出现挑战按钮')
                 self.set_next_run(task="MetaDemon", success=False)
                 raise TaskEnd
+            for _ in range(3):
+                self.screenshot()
+                if not self.appear(self.I_MD_BOOST_ON):
+                    break
+                logger.info('战斗前取消 2.5 倍伤害')
+                self.click(self.I_MD_BOOST_ON)
+                sleep(1)
+            self.screenshot()
             self.appear_then_click(self.I_MD_CHALLENGE)
             sleep(2)
             if self.wait_until_appear(self.I_MD_TEAM_BATTLE, wait_time=3):
@@ -230,6 +286,42 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         if self.wait_until_appear(self.I_MD_MAIN_TITLE, wait_time=timeout):
             return True
         return self.wait_until_appear(self.I_MD_MAIN_TITLE, wait_time=3, skip_first_screenshot=True)
+
+    def md_return_main(self, timeout: int = 25) -> bool:
+        """战斗后回到活动主界面。
+        通用战斗结算可能停在奖励/补给/礼包等残留面板上，先逐个关掉再等标题出现"""
+        timer = Timer(timeout).start()
+        while 1:
+            self.screenshot()
+            if self.appear(self.I_MD_MAIN_TITLE):
+                return True
+            if timer.reached():
+                return False
+            if self.appear(self.I_UI_REWARD, threshold=0.6):
+                self.ui_reward_appear_click()
+                sleep(1)
+                continue
+            if self.appear(self.I_MD_SUPPLY_TITLE):
+                self.click(self.C_MD_SUPPLY_CLOSE)
+                sleep(1)
+                continue
+            if self.md_shop_appear():
+                logger.info('战斗后停在礼包页，关闭')
+                self.click(self.C_MD_CLOSE)
+                sleep(1)
+                continue
+            # 不认识的残留结算页：点底部「点击屏幕继续」区域推进
+            self.click(self.C_CONTINUE_PROMPT, interval=1.5)
+            sleep(0.5)
+
+    def md_shop_appear(self) -> bool:
+        """礼包页识别：能读到「限购 x/y 次」即视为礼包页"""
+        text = str(self.O_MD_SHOP_LIMIT.ocr(self.device.image))
+        return bool(re.search(r'\d+\s*/\s*\d+', text))
+
+    def _battle_finish_check(self) -> bool:
+        # 超鬼王打完会回到活动主界面，标题可见即可结束通用结算的盲点等待
+        return self.appear(self.I_MD_MAIN_TITLE)
 
     def md_open_summon(self) -> bool:
         if self.appear(self.I_MD_SUMMON_TITLE):
@@ -314,6 +406,14 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         numbers = re.findall(r'\d+', result)
         if numbers:
             return int(numbers[-1])
+        return None
+
+    def md_craft_ticket(self):
+        """合成券数量，读不到返回 None"""
+        text = str(self.O_MD_CRAFT_TICKET.ocr(self.device.image))
+        matched = re.search(r'[：:]\s*(\d+)', text)
+        if matched:
+            return int(matched.group(1))
         return None
 
     def md_wait_craft_stock(self, wait_time: int = 6):
