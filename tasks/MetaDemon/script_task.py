@@ -197,9 +197,9 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
 
             star = self.md_pick_star()
             if star is None:
-                logger.info('召唤队列中已无 1~4 星裂变之眼，明天再打')
+                logger.info('召唤队列中已无 1~4 星裂变之眼，明天 10 点再打')
                 target = (datetime.now() + timedelta(days=1)).replace(
-                    hour=0, minute=10, second=0, microsecond=0)
+                    hour=10, minute=0, second=0, microsecond=0)
                 self.set_next_run(task="MetaDemon", success=True, target=target, server=False)
                 raise TaskEnd
 
