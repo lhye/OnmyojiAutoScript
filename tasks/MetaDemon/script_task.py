@@ -249,9 +249,9 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
 
             exhaustion = self.md_exhaustion()
             if exhaustion is not None and exhaustion >= 100:
-                logger.info(f'疲劳度 {exhaustion} >= 100，6 小时后再运行')
+                logger.info(f'疲劳度 {exhaustion} >= 100，1 小时后再运行')
                 self.set_next_run(task="MetaDemon", success=True,
-                                  target=datetime.now() + timedelta(hours=6), server=False)
+                                  target=datetime.now() + timedelta(hours=1), server=False)
                 raise TaskEnd
 
             if not self.md_open_summon():

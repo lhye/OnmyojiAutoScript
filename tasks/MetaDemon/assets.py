@@ -143,7 +143,7 @@ class MetaDemonAssets:
 
 	# Ocr Rule Assets
 	# 疲劳度（右上角 0/100）
-	O_MD_EXHAUSTION_NEW = RuleOcr(roi=(1115,10,165,40), area=(1115,10,165,40), mode="DigitCounter", method="Default", keyword="", name="md_exhaustion_new")
+	O_MD_EXHAUSTION_NEW = RuleOcr(roi=(1102,6,178,46), area=(1102,6,178,46), mode="DigitCounter", method="Default", keyword="", name="md_exhaustion_new")
 	# 礼包价格（只框住"30"两个数字，避开左侧勾玉图标）
 	O_MD_SHOP_PRICE = RuleOcr(roi=(1092,310,40,32), area=(1092,310,40,32), mode="Single", method="Default", keyword="30", name="md_shop_price")
 	# 合成界面底部「合成券：N」的数字部分，为 0 时点开始合成会直接跳到宠梦礼包
