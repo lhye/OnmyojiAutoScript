@@ -10,7 +10,7 @@ from tasks.DailyTrifles.page import page_store_gift_room
 from winerror import NOERROR
 
 from tasks.GameUi.game_ui import GameUi
-from tasks.GameUi.page import page_main, page_summon, page_guild, page_mall, page_friends
+from tasks.GameUi.page import page_main, page_summon, page_guild, page_mall_recommend, page_friends
 from tasks.DailyTrifles.config import DailyTriflesConfig
 from tasks.DailyTrifles.assets import DailyTriflesAssets
 from tasks.Component.Summon.summon import Summon
@@ -209,14 +209,15 @@ class ScriptTask(GameUi, Summon, DailyTriflesAssets):
         self.ui_click(self.I_UI_BACK_RED, self.I_CHECK_MAIN)
 
     def run_store(self):
-        self.goto_page(page_mall, confirm_wait=3)
+        # 现在商店进入后直接是「推荐」页(page_mall_recommend)，旧的 page_mall 已经无法从商店首页返回抵达
+        self.goto_page(page_mall_recommend, confirm_wait=3)
 
         if self.config.daily_trifles.trifles_config.store_sign:
             self.run_store_sign()
         if self.config.daily_trifles.trifles_config.buy_sushi_count > 0:
             self.run_buy_sushi()
 
-        self.goto_page(page_mall, skip_first_screenshot=False, timeout=8)
+        self.goto_page(page_mall_recommend, skip_first_screenshot=False, timeout=8)
         self.goto_page(page_main)
 
     def run_store_sign(self):
