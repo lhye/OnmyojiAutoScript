@@ -5,6 +5,9 @@ import re
 from datetime import datetime, timedelta
 from time import sleep
 
+import cv2
+import numpy as np
+
 from module.base.timer import Timer
 from module.exception import TaskEnd
 from module.logger import logger
@@ -13,15 +16,28 @@ from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleCon
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.Component.RightActivity.right_activity import RightActivity
 from tasks.GameUi.game_ui import GameUi
+from tasks.GameUi.page import page_main
 from tasks.MetaDemon.assets import MetaDemonAssets
 
 
 class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
 
     def run(self):
+        self.md_goto_courtyard()
         self.md_run()
         self.set_next_run(task="MetaDemon", success=True)
         raise TaskEnd
+
+    def md_goto_courtyard(self):
+        """任务可能从战斗或其他活动页启动，先回庭院，超鬼王的入口只在庭院右侧栏"""
+        self.screenshot()
+        if self.appear(self.I_MD_MAIN_TITLE):
+            return
+        logger.hr('超鬼王 回到庭院', 2)
+        try:
+            self.goto_page(page_main)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f'回到庭院失败，继续尝试直接进入活动：{e}')
 
     # ------------------------------------------------------------------
     # 主流程
@@ -37,7 +53,6 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
     def md_enter_activity(self):
         logger.hr('超鬼王 进入活动', 2)
         timer = Timer(60).start()
-        lobby_click = 0
         while 1:
             self.screenshot()
             if self.appear(self.I_MD_MAIN_TITLE):
@@ -55,13 +70,8 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
             # 活动总览：点「前往活动」
             if self.appear_then_click(self.I_ACT_LIST_GOTO_ACT, interval=1.5):
                 continue
-            # 活动大厅（立绘）：点右侧「超鬼王」书签（可点区域靠下）
-            if self.appear_then_click(self.I_MD_ACT_ENTER, action=self.C_MD_ACT_ENTER, interval=1.5):
-                lobby_click += 1
-                # 书签点了两次仍在大厅，说明开场立绘还没结束，点画面中央推进
-                if lobby_click >= 2:
-                    lobby_click = 0
-                    self.click(self.C_MD_LOBBY_SKIP)
+            # 活动大厅立绘：点左侧「祸主降临」活动名进入（点击位置取模板命中区域）
+            if self.appear_then_click(self.I_MD_LOBBY_ENTER, interval=1.5):
                 continue
             sleep(0.5)
 
@@ -87,7 +97,9 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
     def md_buy_gift(self):
         logger.hr('超鬼王 购买每日30勾玉礼包', 2)
         self.md_wait_main()
-        self.click(self.C_MD_GIFT)
+        if not self.appear_then_click(self.I_MD_GIFT_ICON):
+            logger.warning('未找到礼包入口，跳过购买')
+            return
         if not self.md_wait_shop(wait_time=6):
             logger.warning('未进入礼包界面，跳过购买')
             return
@@ -119,13 +131,17 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
                 break
             self.ui_reward_appear_click()
             sleep(1)
-        self.click(self.C_MD_CLOSE)
-        sleep(1)
+        self.screenshot()
+        if self.md_shop_appear():
+            self.click(self.C_MD_CLOSE)
+            sleep(1)
 
     def md_craft_star1(self):
         logger.hr('超鬼王 一星裂变之眼合成', 2)
         self.md_wait_main()
-        self.click(self.C_MD_CRAFT)
+        if not self.appear_then_click(self.I_MD_CRAFT_ICON):
+            logger.warning('未找到合成入口，跳过合成')
+            return
         if not self.wait_until_appear(self.I_MD_CRAFT_TITLE, wait_time=6):
             logger.warning('未进入合成界面，跳过合成')
             return
@@ -214,9 +230,9 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         for _ in range(2):
             # 第一队行内文字会随日期变化（【Day1】/【Day2】群体阵容），用固定点点击
             self.click(self.C_MD_TEAM_FIRST)
-            sleep(1.2)
-            if self.appear(self.I_UI_CONFIRM):
-                self.click(self.I_UI_CONFIRM)
+            # 点完必须重新截图轮询，appear 用的是缓存图，会漏掉后弹出来的确认框
+            if self.wait_until_appear(self.I_UI_CONFIRM, wait_time=3):
+                self.appear_then_click(self.I_UI_CONFIRM)
                 switched = True
                 sleep(1)
                 break
@@ -252,7 +268,10 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
                 raise TaskEnd
 
             logger.info(f'召唤 {star} 星裂变之眼')
-            self.click(self.C_MD_SUMMON_NOW)
+            if not self.appear_then_click(self.I_MD_SUMMON_NOW):
+                logger.warning('召唤队列里没找到「立即召唤」按钮')
+                self.set_next_run(task="MetaDemon", success=False)
+                raise TaskEnd
             sleep(2)
             # 召唤成功后鬼王出现在场景中，先取消「2.5倍伤害」强力，再点右下角「挑战」进战斗
             if not self.wait_until_appear(self.I_MD_CHALLENGE, wait_time=10):
@@ -324,37 +343,70 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         return self.appear(self.I_MD_MAIN_TITLE)
 
     def md_open_summon(self) -> bool:
+        self.screenshot()
         if self.appear(self.I_MD_SUMMON_TITLE):
             return True
         for _ in range(3):
-            self.click(self.C_MD_QUEUE)
+            # 战斗结束回主界面后侧栏图标是淡入的，先轮询等图标出现再点（每轮都会重新截图）
+            if not self.wait_until_appear_then_click(self.I_MD_QUEUE_ICON, wait_time=8):
+                logger.info(f'没等到召唤队列图标（得分 {self.I_MD_QUEUE_ICON.last_score:.3f}）')
+                return False
             if self.wait_until_appear(self.I_MD_SUMMON_TITLE, wait_time=4):
                 return True
         return False
 
     def md_pick_star(self):
-        """点击队列最左侧的低/中星卡片（1~4星）；最左只剩 5/6 星时返回 None"""
+        """点队列最左侧的低/中星卡片（1~4星）；最左只剩 5/6 星时返回 None"""
         self.screenshot()
         image = self.device.image
-        hits = []
+        cards = []
         for rule, label in ((self.I_MD_CARD_LOW, '1~2星'),
                             (self.I_MD_CARD_MID, '3~4星'),
                             (self.I_MD_CARD_HIGH, '5~6星')):
-            if rule.match(image):
-                hits.append((rule.roi_front[0], rule, label))
-        if not hits:
+            for x, y, w, h, score in self._match_all(rule, image):
+                cards.append((x, y, w, h, score, label))
+        if not cards:
             return None
-        left = min(item[0] for item in hits)
-        for x, rule, label in hits:
-            if x > left + 8:
-                continue
-            # 最左侧是 5/6 星，说明 1~4 星已耗尽
-            if rule is self.I_MD_CARD_HIGH:
-                return None
-            self.click(rule)
-            sleep(0.6)
-            return label
-        return None
+        # 同一张卡可能被多档命中，按 x 聚成一张卡，取分数最高的那档作为它的星级
+        cards.sort(key=lambda c: c[0])
+        groups = []
+        for card in cards:
+            if groups and card[0] - groups[-1][0][0] <= 45:
+                groups[-1].append(card)
+            else:
+                groups.append([card])
+        x, y, w, h, score, label = max(groups[0], key=lambda c: c[4])
+        # 最左侧是 5/6 星，说明 1~4 星已耗尽
+        if label == '5~6星':
+            logger.info('队列最左侧是 5~6 星卡片，停止召唤')
+            return None
+        self.device.click(x + w // 2, y + h // 2, control_name='md_pick_star')
+        sleep(0.6)
+        return label
+
+    @staticmethod
+    def _match_all(rule, image, threshold: float = None):
+        """返回模板在 roi_back 内的全部命中 (x, y, w, h, score)，按 x 升序。
+        rule.match 每次只给一个最优命中，选「最左」时会把倒数第二张卡当成最左"""
+        th = rule.threshold if threshold is None else threshold
+        x1, y1, w1, h1 = rule.roi_back
+        crop = image[y1:y1 + h1, x1:x1 + w1]
+        template = rule.image
+        th_tpl, tw_tpl = template.shape[:2]
+        if crop.shape[0] < th_tpl or crop.shape[1] < tw_tpl:
+            return []
+        res = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
+        ys, xs = np.where(res >= th)
+        hits = [(int(x1 + x), int(y1 + y), tw_tpl, th_tpl, float(res[y, x]))
+                for y, x in zip(ys, xs)]
+        # 去重：同一张卡附近只保留最高分
+        hits.sort(key=lambda h: -h[4])
+        kept = []
+        for hit in hits:
+            if all(abs(hit[0] - k[0]) > hit[2] // 2 or abs(hit[1] - k[1]) > hit[3] // 2 for k in kept):
+                kept.append(hit)
+        kept.sort(key=lambda h: h[0])
+        return kept
 
     def md_is_30_jade(self) -> bool:
         """礼包价格OCR，必须含 "30" 才允许购买"""
