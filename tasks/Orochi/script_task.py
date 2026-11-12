@@ -22,6 +22,9 @@ from module.exception import TaskEnd
 
 class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi, SwitchSoul, OrochiAssets, TrueOrochiAssets):
 
+    # 队员在庭院等待队长邀请的最长时间(秒), 超时结束本次任务
+    WAIT_INVITE_TIMEOUT = 600
+
     def run(self) -> bool:
         # 御魂切换方式一
         if self.config.orochi.switch_soul.enable:
@@ -227,6 +230,8 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
 
         # 进入战斗流程
         self.device.stuck_record_add('BATTLE_STATUS_S')
+        wait_invite_start = None
+        unknown_click = 0
         while 1:
             self.screenshot()
 
@@ -242,15 +247,27 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                 break
 
             if self.check_then_accept():
+                wait_invite_start = None
+                unknown_click = 0
                 continue
 
             # 队员在庭院等队长邀请: 这段时间没有任何点击, 主动刷新 stuck 计时, 否则 60s 后被误判卡死重启
             if self.appear(self.I_CHECK_MAIN):
+                if wait_invite_start is None:
+                    wait_invite_start = datetime.now()
+                    logger.info('Member wait for invitation in yard')
+                waited = (datetime.now() - wait_invite_start).total_seconds()
+                if waited >= self.WAIT_INVITE_TIMEOUT:
+                    logger.warning(f'Wait invitation timeout ({int(waited)}s), exit orochi task')
+                    return False
+                unknown_click = 0
                 self.device.stuck_record_clear()
                 self.device.stuck_record_add('BATTLE_STATUS_S')
                 continue
 
             if self.is_in_room():
+                wait_invite_start = None
+                unknown_click = 0
                 self.device.stuck_record_clear()
                 if self.wait_battle(wait_time=self.config.orochi.invite_config.wait_time):
                     self.run_general_battle(config=self.config.orochi.general_battle_config)
@@ -258,10 +275,17 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                     break
             # 队长秒开的时候，检测是否进入到战斗中
             elif self.check_take_over_battle(False, config=self.config.orochi.general_battle_config):
+                wait_invite_start = None
+                unknown_click = 0
                 continue
             else:
                 # 停在未知界面(结算残留页): 盲点底部"点击屏幕继续"区域推进
-                self.click_continue_prompt()
+                # 同一按钮连续点击 10 次会抛 GameTooManyClickError, 这里限制次数后结束任务
+                if self.click_continue_prompt():
+                    unknown_click += 1
+                if unknown_click > 6:
+                    logger.warning('Member stuck on unknown page, exit orochi task')
+                    return False
 
         while 1:
             # 有一种情况是本来要退出的，但是队长邀请了进入的战斗的加载界面
