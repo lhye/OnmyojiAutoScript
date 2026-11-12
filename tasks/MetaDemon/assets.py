@@ -152,6 +152,8 @@ class MetaDemonAssets:
 	O_MD_SHOP_LIMIT = RuleOcr(roi=(1015,270,215,40), area=(1015,270,215,40), mode="Single", method="Default", keyword="", name="md_shop_limit")
 	# 合成界面一星持有数（只框"持有：N"，避开左侧道具图标）
 	O_MD_CRAFT_STOCK = RuleOcr(roi=(300,175,220,75), area=(300,175,220,75), mode="Single", method="Default", keyword="", name="md_craft_stock")
+	# 队伍面板左侧分类的第一个标签「活动」（模板会误匹配御魂/英杰/契灵，必须用 OCR 定位）
+	O_MD_TEAM_TAB_ACT = RuleOcr(roi=(480,236,130,50), area=(480,236,130,50), mode="Full", method="Default", keyword="活动", name="md_team_tab_act")
 
 	# Click Rule Assets
 	# 队伍租借 - 第一套队伍（行内文字会随日期变化，用固定点）

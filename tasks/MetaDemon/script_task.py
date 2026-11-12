@@ -224,7 +224,14 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         if not self.wait_until_appear(self.I_MD_TEAM_TAB_ACTIVITY, wait_time=6):
             logger.warning('队伍面板未打开，跳过队伍设置')
             return
-        self.md_click_rule(self.I_MD_TEAM_TAB_ACTIVITY)
+        # 分类标签用 OCR 定位「活动」：模板会误匹配御魂/英杰/契灵等外形相同的标签
+        self.screenshot()
+        area = self.O_MD_TEAM_TAB_ACT.ocr(self.device.image)
+        if not area or area[2] <= 0:
+            logger.warning('未识别到「活动」分类标签，跳过队伍设置')
+            return
+        x, y, w, h = area
+        self.device.click(x + w // 2, y + h // 2, control_name='md_team_tab_activity')
         sleep(1)
         switched = False
         for _ in range(2):
@@ -254,30 +261,34 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
                                   target=datetime.now() + timedelta(hours=1), server=False)
                 raise TaskEnd
 
-            if not self.md_open_summon():
-                logger.warning('未能打开召唤队列弹窗')
-                self.set_next_run(task="MetaDemon", success=False)
-                raise TaskEnd
+            # 场上已有自己发现的鬼王时，右侧栏的「全部队列」会被「挑战」取代，直接打它
+            self.screenshot()
+            if not self.appear(self.I_MD_CHALLENGE):
+                if not self.md_open_summon():
+                    logger.warning('未能打开召唤队列弹窗')
+                    self.set_next_run(task="MetaDemon", success=False)
+                    raise TaskEnd
 
-            star = self.md_pick_star()
-            if star is None:
-                logger.info('召唤队列中已无 1~4 星裂变之眼，明天 10 点再打')
-                target = (datetime.now() + timedelta(days=1)).replace(
-                    hour=10, minute=0, second=0, microsecond=0)
-                self.set_next_run(task="MetaDemon", success=True, target=target, server=False)
-                raise TaskEnd
+                star = self.md_pick_star()
+                if star is None:
+                    logger.info('召唤队列中已无 1~4 星裂变之眼，明天 10 点再打')
+                    target = (datetime.now() + timedelta(days=1)).replace(
+                        hour=10, minute=0, second=0, microsecond=0)
+                    self.set_next_run(task="MetaDemon", success=True, target=target, server=False)
+                    raise TaskEnd
 
-            logger.info(f'召唤 {star} 星裂变之眼')
-            if not self.appear_then_click(self.I_MD_SUMMON_NOW):
-                logger.warning('召唤队列里没找到「立即召唤」按钮')
-                self.set_next_run(task="MetaDemon", success=False)
-                raise TaskEnd
-            sleep(2)
-            # 召唤成功后鬼王出现在场景中，先取消「2.5倍伤害」强力，再点右下角「挑战」进战斗
-            if not self.wait_until_appear(self.I_MD_CHALLENGE, wait_time=10):
-                logger.warning('召唤后未出现挑战按钮')
-                self.set_next_run(task="MetaDemon", success=False)
-                raise TaskEnd
+                logger.info(f'召唤 {star} 星裂变之眼')
+                if not self.appear_then_click(self.I_MD_SUMMON_NOW):
+                    logger.warning('召唤队列里没找到「立即召唤」按钮')
+                    self.set_next_run(task="MetaDemon", success=False)
+                    raise TaskEnd
+                sleep(2)
+                if not self.wait_until_appear(self.I_MD_CHALLENGE, wait_time=10):
+                    logger.warning('召唤后未出现挑战按钮')
+                    self.set_next_run(task="MetaDemon", success=False)
+                    raise TaskEnd
+            else:
+                logger.info('场上已有自己发现的鬼王，直接挑战')
             for _ in range(3):
                 self.screenshot()
                 if not self.appear(self.I_MD_BOOST_ON):
