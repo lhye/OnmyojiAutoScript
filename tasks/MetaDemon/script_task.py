@@ -225,14 +225,25 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         if not self.wait_until_appear(self.I_MD_TEAM_TAB_ACTIVITY, wait_time=6):
             logger.warning('队伍面板未打开，跳过队伍设置')
             return
-        # 分类标签用 OCR 定位「活动」：模板会误匹配御魂/英杰/契灵等外形相同的标签
+        # 分类标签整列 OCR 后精确匹配「活动」：各账号标签种类和顺序不同，
+        # 首格可能是「寮活动」，模糊匹配会点错分组
         self.screenshot()
-        area = self.O_MD_TEAM_TAB_ACT.ocr(self.device.image)
-        if not area or area[2] <= 0:
+        target = None
+        for boxed in self.O_MD_TEAM_TAB_ACT.detect_and_ocr(self.device.image):
+            text = str(boxed.ocr_text).replace('【', '').replace('】', '').strip()
+            if text == '活动':
+                target = boxed
+                break
+        if target is None:
             logger.warning('未识别到「活动」分类标签，跳过队伍设置')
             return
-        x, y, w, h = area
-        self.device.click(x + w // 2, y + h // 2, control_name='md_team_tab_activity')
+        xs = [point[0] for point in target.box]
+        ys = [point[1] for point in target.box]
+        ox, oy = self.O_MD_TEAM_TAB_ACT.roi[:2]
+        click_x = int(ox + (min(xs) + max(xs)) // 2)
+        click_y = int(oy + (min(ys) + max(ys)) // 2)
+        logger.info(f'点击活动分类 ({click_x},{click_y})')
+        self.device.click(click_x, click_y, control_name='md_team_tab_activity')
         sleep(1)
         switched = False
         for _ in range(2):
