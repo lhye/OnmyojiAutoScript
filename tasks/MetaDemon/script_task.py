@@ -61,6 +61,14 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
                 logger.warning('进入超鬼王活动界面超时')
                 self.set_next_run(task="MetaDemon", success=False)
                 raise TaskEnd
+            # 当天首次进入会弹「好友昨日战力/昨日狩猎奖励」，挡住主界面，必须先领取
+            if self.appear_then_click(self.I_MD_DAILY_RECEIVE, interval=1.5):
+                logger.info('领取昨日狩猎奖励')
+                continue
+            # 领取后弹出全屏「获得奖励」，点右侧空白关闭
+            if self.appear(self.I_UI_REWARD, threshold=0.6):
+                self.ui_reward_appear_click()
+                continue
             # 庭院：右侧栏里已有超鬼王图标则直接点，一步进主界面
             if self.appear_then_click(self.I_MD_ACTIVITY_ICON, interval=1.5):
                 continue
@@ -145,13 +153,6 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         if not self.wait_until_appear(self.I_MD_CRAFT_TITLE, wait_time=6):
             logger.warning('未进入合成界面，跳过合成')
             return
-        self.screenshot()
-        ticket = self.md_craft_ticket()
-        if ticket == 0:
-            # 券为 0 时点开始合成会让游戏直接跳到宠梦礼包，随后所有主界面识别都会超时
-            logger.info('合成券为 0，跳过合成')
-            self.md_close_craft()
-            return
         # 列表会记住上次滚动位置，先拉回顶部，保证第一行是一星
         for _ in range(2):
             self.device.swipe(p1=(300, 180), p2=(300, 420), duration=(0.3, 0.4))
@@ -176,7 +177,7 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
             if prev_stock is not None and stock is not None and stock >= prev_stock:
                 same_count += 1
                 if same_count >= 2:
-                    logger.warning(f'一星数量未减少（{stock}），可能合成券不足，停止合成')
+                    logger.warning(f'一星数量未减少（{stock}），停止合成')
                     break
             else:
                 same_count = 0
@@ -469,14 +470,6 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         numbers = re.findall(r'\d+', result)
         if numbers:
             return int(numbers[-1])
-        return None
-
-    def md_craft_ticket(self):
-        """合成券数量，读不到返回 None"""
-        text = str(self.O_MD_CRAFT_TICKET.ocr(self.device.image))
-        matched = re.search(r'[：:]\s*(\d+)', text)
-        if matched:
-            return int(matched.group(1))
         return None
 
     def md_wait_craft_stock(self, wait_time: int = 6):

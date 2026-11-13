@@ -146,8 +146,6 @@ class MetaDemonAssets:
 	O_MD_EXHAUSTION_NEW = RuleOcr(roi=(1102,6,178,46), area=(1102,6,178,46), mode="DigitCounter", method="Default", keyword="", name="md_exhaustion_new")
 	# 礼包价格（只框住"30"两个数字，避开左侧勾玉图标）
 	O_MD_SHOP_PRICE = RuleOcr(roi=(1092,310,40,32), area=(1092,310,40,32), mode="Single", method="Default", keyword="30", name="md_shop_price")
-	# 合成界面底部「合成券：N」的数字部分，为 0 时点开始合成会直接跳到宠梦礼包
-	O_MD_CRAFT_TICKET = RuleOcr(roi=(935,600,110,55), area=(935,600,110,55), mode="Single", method="Default", keyword="", name="md_craft_ticket")
 	# 礼包限购（每天限购0/5次）
 	O_MD_SHOP_LIMIT = RuleOcr(roi=(1015,270,215,40), area=(1015,270,215,40), mode="Single", method="Default", keyword="", name="md_shop_limit")
 	# 合成界面一星持有数（只框"持有：N"，避开左侧道具图标）
