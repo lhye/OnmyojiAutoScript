@@ -572,6 +572,18 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             if self.appear(self.__getattribute__("I_WQ_COOPERATION_TYPE_GOLD_" + str(index + 1))):
                 retList.append({'type': CooperationType.Gold, 'inviteBtn': btn})
                 continue
+            # 只要卡片上有邀请按钮就说明是协作任务, 类型识别不出来也要邀请出去,
+            # 取分数最高的类型作为任务类型(Any 配置下不影响筛选)
+            best_type, best_score = None, -1.0
+            for type_name, ctype in (("JADE", CooperationType.Jade), ("SUSHI", CooperationType.Sushi),
+                                     ("DOG_FOOD", CooperationType.Food), ("CAT_FOOD", CooperationType.Food),
+                                     ("GOLD", CooperationType.Gold)):
+                rule = self.__getattribute__(f"I_WQ_COOPERATION_TYPE_{type_name}_{index + 1}")
+                rule.match(self.device.image)
+                if rule.last_score > best_score:
+                    best_type, best_score = ctype, rule.last_score
+            logger.info(f"cooperation type by score {best_score:.3f} -> {best_type.name}")
+            retList.append({'type': best_type, 'inviteBtn': btn})
         logger.info(f"get cooperation size {len(retList)}")
         return retList
 
