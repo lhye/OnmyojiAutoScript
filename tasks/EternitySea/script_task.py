@@ -202,13 +202,8 @@ class ScriptTask(
                 logger.info("EternitySea time limit out")
                 break
 
+            # 有邀请弹窗先接邀请, 在房间里就等队长开战, 其它页面一律不乱点
             if self.check_then_accept():
-                continue
-
-            # 队员在庭院等队长邀请: 这段时间没有任何点击, 主动刷新 stuck 计时, 否则 60s 后被误判卡死重启
-            if self.appear(self.I_CHECK_MAIN):
-                self.device.stuck_record_clear()
-                self.device.stuck_record_add('BATTLE_STATUS_S')
                 continue
 
             if self.is_in_room():
@@ -221,8 +216,14 @@ class ScriptTask(
             elif self.check_take_over_battle(False, config=self._task_config.general_battle_config):
                 continue
             else:
-                # 停在未知界面(结算残留页): 盲点底部"点击屏幕继续"区域推进
-                self.click_continue_prompt()
+                # 只有结算页真的出现"点击屏幕继续"才点, 探索/庭院等待邀请时不盲点
+                prompt = self.O_BATTLE_RESULT.ocr_single_line(self.device.image)
+                if prompt and any(k in prompt for k in ('继续', '点击', '屏幕', '空白')):
+                    self.click_continue_prompt()
+                else:
+                    self.device.stuck_record_clear()
+                    self.device.stuck_record_add('BATTLE_STATUS_S')
+                    sleep(1)
 
         while 1:
             # 有一种情况是本来要退出的，但是队长邀请了进入的战斗的加载界面
