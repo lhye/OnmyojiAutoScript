@@ -1199,7 +1199,7 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         """
         logger.info('Universal battle ended, waiting for continue prompt')
         if uni.timer is None:
-            uni.timer = Timer(20).start()
+            uni.timer = Timer(10).start()
         if uni.ocr_timer is None:
             uni.ocr_timer = Timer(1).start()
         # 文字匹配放宽: OCR 可能把"点击屏幕继续/点击空白区域继续"识别错一两个字, 命中任意关键字即算
@@ -1213,7 +1213,7 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                     uni.end_seen = False
                     uni.miss = 0
                     uni.blind_cnt = 0
-                    uni.timer = Timer(20).start()
+                    uni.timer = Timer(10).start()
                 return None
             # 任务收尾标志优先: 已经回到任务地图/庭院时不能继续盲点
             if self._battle_finish_check() or self.appear(self.I_CHECK_MAIN):
@@ -1259,7 +1259,7 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                     logger.info(f'No continue prompt, blind click {uni.blind_cnt + 1}/6')
                     self.click(self.C_WIN_4, interval=1.5)
                     uni.blind_cnt += 1
-            # 见过"点击屏幕继续"之后不再用20s超时收尾(超时时提示还在屏幕上, 会导致结算页残留),
+            # 见过"点击屏幕继续"之后不再用超时收尾(超时时提示还在屏幕上, 会导致结算页残留),
             # 必须以连续3次截图都没有提示为准
             if not uni.end_seen and uni.timer.reached():
                 logger.warning('Universal battle timeout, treat as win')
@@ -1286,11 +1286,11 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                     uni.end_seen = False
                     uni.miss = 0
                     uni.blind_cnt = 0
-                uni.timer = Timer(20).start()
+                uni.timer = Timer(10).start()
                 uni.seen = True
                 return HookSignal.CONTINUE
             if not uni.seen:
-                # 还没真正进入战斗(如新版式神录式准备页), 不能当成战斗结算空等20s+盲点
+                # 还没真正进入战斗(如新版式神录式准备页), 不能当成战斗结算空等+盲点
                 return HookSignal.CONTINUE
             result = self._universal_wait_result_with_state(uni, state)
             if result is None:
