@@ -1207,7 +1207,13 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         while 1:
             self.screenshot()
             if self.appear(self.I_BATTLE_EMBER):
-                # 鬼火重现说明还在战斗
+                # 鬼火重现说明还在战斗(多阶段战斗切换阶段时鬼火会短暂消失)
+                if uni.end_seen or uni.miss or uni.blind_cnt:
+                    logger.info('Battle ember back, reset settlement state')
+                    uni.end_seen = False
+                    uni.miss = 0
+                    uni.blind_cnt = 0
+                    uni.timer = Timer(20).start()
                 return None
             # 任务收尾标志优先: 已经回到任务地图/庭院时不能继续盲点
             if self._battle_finish_check() or self.appear(self.I_CHECK_MAIN):
@@ -1253,7 +1259,9 @@ class BattleWait(BaseTask, GeneralBattleAssets):
                     logger.info(f'No continue prompt, blind click {uni.blind_cnt + 1}/6')
                     self.click(self.C_WIN_4, interval=1.5)
                     uni.blind_cnt += 1
-            if uni.timer.reached():
+            # 见过"点击屏幕继续"之后不再用20s超时收尾(超时时提示还在屏幕上, 会导致结算页残留),
+            # 必须以连续3次截图都没有提示为准
+            if not uni.end_seen and uni.timer.reached():
                 logger.warning('Universal battle timeout, treat as win')
                 return True
 
@@ -1271,6 +1279,14 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             # 通用战斗主题: 鬼火消失后以公共领奖画面/任务收尾标志判定胜负(不使用主题图)
             uni: UniversalWaitState = state.uni
             if self.appear(self.I_BATTLE_EMBER) or self.appear(self.I_BATTLE_INFO):
+                # 鬼火重现就是还在战斗: 永生之海二阶段切换时鬼火会短暂消失, 之后又出现,
+                # 这时必须把结算状态(超时/丢失计数/盲点次数)全部重置, 否则二阶段会被当成结算结束
+                if uni.end_seen or uni.miss or uni.blind_cnt:
+                    logger.info('Battle ember back, reset settlement state')
+                    uni.end_seen = False
+                    uni.miss = 0
+                    uni.blind_cnt = 0
+                uni.timer = Timer(20).start()
                 uni.seen = True
                 return HookSignal.CONTINUE
             if not uni.seen:
