@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 from module.base.timer import Timer
-from module.exception import TaskEnd
+from module.exception import GameNotRunningError, TaskEnd
 from module.logger import logger
 
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
@@ -36,6 +36,9 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
         logger.hr('超鬼王 回到庭院', 2)
         try:
             self.goto_page(page_main)
+        except GameNotRunningError:
+            # 游戏没启动时交给调度器排队 Restart 拉起，吞掉会在活动入口空转到超时
+            raise
         except Exception as e:  # noqa: BLE001
             logger.warning(f'回到庭院失败，继续尝试直接进入活动：{e}')
 
