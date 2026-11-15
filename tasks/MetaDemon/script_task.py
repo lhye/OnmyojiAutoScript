@@ -78,8 +78,8 @@ class ScriptTask(GeneralBattle, RightActivity, GameUi, MetaDemonAssets):
             # 活动总览：点「前往活动」
             if self.appear_then_click(self.I_ACT_LIST_GOTO_ACT, interval=1.5):
                 continue
-            # 活动大厅立绘：点左侧「祸主降临」活动名进入（点击位置取模板命中区域）
-            if self.appear_then_click(self.I_MD_LOBBY_ENTER, interval=1.5):
+            # 活动大厅立绘：OCR 定位右侧竖排「祸主降临」并点击进入（立绘换皮不影响）
+            if self.ocr_appear_click(self.O_MD_LOBBY_ENTER, interval=1.5):
                 continue
             sleep(0.5)
 

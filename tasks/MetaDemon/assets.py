@@ -110,8 +110,6 @@ class MetaDemonAssets:
 	I_MD_GIFT_ICON = RuleImage(roi_front=(1178,128,54,54), roi_back=(1160,120,110,110), threshold=0.85, method="Template matching", file="./tasks/MetaDemon/md/md_gift_icon.png")
 	# 活动主界面右侧栏 - 合成图标
 	I_MD_CRAFT_ICON = RuleImage(roi_front=(1178,202,54,54), roi_back=(1160,190,110,110), threshold=0.85, method="Template matching", file="./tasks/MetaDemon/md/md_craft_icon.png")
-	# 活动大厅（立绘）左侧「祸主降临」活动名，点它进活动主界面
-	I_MD_LOBBY_ENTER = RuleImage(roi_front=(890,40,118,258), roi_back=(860,20,180,320), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_lobby_enter.png")
 	# 每日首次奖励-领取
 	I_MD_DAILY_RECEIVE = RuleImage(roi_front=(720,522,240,90), roi_back=(600,470,450,180), threshold=0.8, method="Template matching", file="./tasks/MetaDemon/md/md_daily_receive.png")
 	# 合成界面标题（裂变之眼合成）
@@ -152,6 +150,8 @@ class MetaDemonAssets:
 	O_MD_CRAFT_STOCK = RuleOcr(roi=(300,175,220,75), area=(300,175,220,75), mode="Single", method="Default", keyword="", name="md_craft_stock")
 	# 队伍面板左侧整个分类列（各账号标签种类/顺序不同，需整列 OCR 后精确取「活动」）
 	O_MD_TEAM_TAB_ACT = RuleOcr(roi=(470,170,150,380), area=(470,170,150,380), mode="Full", method="Default", keyword="", name="md_team_tab_act")
+	# 活动大厅（立绘）右侧竖排「祸主降临」入口，OCR认字定位，立绘换皮不影响
+	O_MD_LOBBY_ENTER = RuleOcr(roi=(850,20,200,320), area=(850,20,200,320), mode="Full", method="Default", keyword="祸主", name="md_lobby_enter")
 
 	# Click Rule Assets
 	# 队伍租借 - 第一套队伍（行内文字会随日期变化，用固定点）
