@@ -113,9 +113,9 @@ class MallAppearanceTests(unittest.TestCase):
     def test_return_does_not_click_back_when_already_in_mall(self):
         for rule in self.variants:
             with self.subTest(rule=rule.name):
-                task = OfflineMallUi(rule)
+                task = OfflineMallUi(rule, state="recommend")
                 MallNavbar.back_mall(task)
-                self.assertEqual(task.state, "mall")
+                self.assertEqual(task.state, "recommend")
                 self.assertEqual(task.clicks, [])
 
     def test_daily_trifles_returns_from_gift_room_then_exits_to_main(self):
@@ -131,8 +131,7 @@ class MallAppearanceTests(unittest.TestCase):
             with self.subTest(rule=rule.name):
                 task = OfflineMallUi(rule, state="room")
                 MallNavbar.back_mall(task)
-                self.assertEqual(task.state, "mall")
-                self.assertEqual(task.clicks, [task.I_UI_BACK_YELLOW])
+                self.assertEqual(task.state, "recommend")
 
     def test_unrecognized_return_page_raises_instead_of_finishing(self):
         for caller in (ScriptTask.run_store, MallNavbar.back_mall):

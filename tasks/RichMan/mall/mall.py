@@ -11,14 +11,15 @@ from tasks.RichMan.mall.consignment import Consignment
 from tasks.RichMan.mall.scales import Scales
 from tasks.RichMan.mall.honor import Honor
 from tasks.RichMan.mall.bondlings import Bondlings
-from tasks.GameUi.page import page_main, page_mall
+from tasks.GameUi.page import page_mall_recommend
 
 class Mall(Medal, Charisma, Honor, Consignment, Scales, Bondlings):
 
 
     def execute_mall(self):
         logger.hr('Mall', 1)
-        self.goto_page(page_mall, confirm_wait=2.5)
+        # 商店入口现在直接落在「推荐」页，旧的 page_mall 已无法抵达
+        self.goto_page(page_mall_recommend, confirm_wait=2.5)
 
         # 寄售屋
         self.execute_consignment()

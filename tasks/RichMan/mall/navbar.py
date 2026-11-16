@@ -6,7 +6,7 @@ import time
 
 from module.logger import logger
 
-from tasks.GameUi.page import page_main, page_guild, page_mall
+from tasks.GameUi.page import page_main, page_guild, page_mall_recommend
 from tasks.GameUi.game_ui import GameUi
 from tasks.Component.Buy.buy import Buy
 from tasks.RichMan.assets import RichManAssets
@@ -89,7 +89,7 @@ class MallNavbar(GameUi, RichManAssets):
         返回商城
         :return:
         """
-        self.goto_page(page_mall, skip_first_screenshot=False, timeout=6)
+        self.goto_page(page_mall_recommend, skip_first_screenshot=False, timeout=6)
 
 
     def mall_resource(self, index: int) -> int:
