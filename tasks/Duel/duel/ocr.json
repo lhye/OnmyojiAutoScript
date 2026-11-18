@@ -52,5 +52,14 @@
     "method": "Default",
     "keyword": "",
     "description": "被办式神名称"
+  },
+  {
+    "itemName": "d_claim",
+    "roiFront": "705,480,245,80",
+    "roiBack": "705,480,245,80",
+    "mode": "Full",
+    "method": "Default",
+    "keyword": "开心收下",
+    "description": "每周更新后斗技增益道具弹窗的领取按钮"
   }
 ]

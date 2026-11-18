@@ -81,5 +81,7 @@ class DuelAssets:
 	O_D_RESULT_WIN = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="胜利", name="d_result_win")
 	# 通用战斗主题: 结算banner失败文字
 	O_D_RESULT_LOSE = RuleOcr(roi=(240,25,860,310), area=(240,25,860,310), mode="Full", method="Default", keyword="失败", name="d_result_lose")
+	# 每周更新后斗技增益道具弹窗的领取按钮
+	O_D_CLAIM = RuleOcr(roi=(705,480,245,80), area=(705,480,245,80), mode="Full", method="Default", keyword="开心收下", name="d_claim")
 
 

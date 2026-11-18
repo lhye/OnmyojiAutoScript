@@ -66,6 +66,8 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
             self.goto_page(page_onmyodo)
             self.switch_onmyoji(self.conf.duel_config.switch_onmyoji)
         self.goto_page(page_duel)
+        # 每周三更新后偶发的斗技增益道具弹窗，遇到就点「开心收下」，没有也无所谓
+        self.ocr_appear_click(self.O_D_CLAIM, interval=0.5)
         self.switch_all_soul()
         self.current_score = self.conf.duel_celeb_config.initial_score
 
@@ -116,6 +118,9 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
         logger.hr('duel battle matching')
         while not self.is_in_battle_prepare():
             self.screenshot()
+            # 弹窗会挡住战斗按钮，循环里再兜底检查一次
+            if self.ocr_appear_click(self.O_D_CLAIM, interval=1.2):
+                continue
             # 战斗按钮
             self.ui_click_until_disappear(self.I_D_BATTLE, interval=1.2)
             self.ui_click_until_disappear(self.I_D_BATTLE2, interval=1.2)
