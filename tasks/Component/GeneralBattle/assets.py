@@ -272,3 +272,10 @@ class GeneralBattleAssets:
 
 
 
+	# Image Rule Assets
+	# 显示是锁队伍的图标 
+	I_TEAM_LOCK = RuleImage(roi_front=(1135,379,26,31), roi_back=(728,354,470,341), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/lock/lock_team_lock.png")
+	# 显示是没有锁队伍的图标 
+	I_TEAM_UNLOCK = RuleImage(roi_front=(1136,379,25,27), roi_back=(724,346,472,342), threshold=0.8, method="Template matching", file="./tasks/Component/GeneralBattle/lock/lock_team_unlock.png")
+
+
