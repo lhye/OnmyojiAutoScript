@@ -2,17 +2,17 @@
   {
     "itemName": "check_main_11",
     "imageName": "main11_check_main_11.png",
-    "roiFront": "521,570,53,24",
-    "roiBack": "131,514,1099,100",
+    "roiFront": "1202,10,48,50",
+    "roiBack": "1170,0,110,80",
     "method": "Template matching",
-    "threshold": 0.8,
+    "threshold": 0.85,
     "description": "description"
   },
   {
     "itemName": "main_goto_exploration_11",
     "imageName": "main11_main_goto_exploration_11.png",
-    "roiFront": "522,113,21,34",
-    "roiBack": "192,105,904,66",
+    "roiFront": "515,110,55,80",
+    "roiBack": "480,80,150,130",
     "method": "Template matching",
     "threshold": 0.6,
     "description": "description"
@@ -20,19 +20,19 @@
   {
     "itemName": "main_goto_summon_11",
     "imageName": "main11_main_goto_summon_11.png",
-    "roiFront": "946,111,20,37",
-    "roiBack": "500,102,623,68",
+    "roiFront": "1058,108,56,80",
+    "roiBack": "1010,80,160,130",
     "method": "Template matching",
-    "threshold": 0.6,
+    "threshold": 0.8,
     "description": ""
   },
   {
     "itemName": "main_goto_town_11",
     "imageName": "main11_main_goto_town_11.png",
-    "roiFront": "703,169,35,20",
-    "roiBack": "262,145,999,78",
+    "roiFront": "688,160,64,32",
+    "roiBack": "656,140,128,72",
     "method": "Template matching",
-    "threshold": 0.7,
+    "threshold": 0.8,
     "description": "町中"
   },
   {

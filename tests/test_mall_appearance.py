@@ -35,7 +35,8 @@ class OfflineMallUi(GameUi):
         back = GlobalGameAssets.I_UI_BACK_YELLOW
         self.frames = {
             "mall": frame_with(mall_rule, back),
-            "main": frame_with(GameUiAssets.I_CHECK_MAIN, GameUiAssets.I_MAIN_GOTO_MALL),
+            "main": frame_with(GameUiAssets.I_CHECK_MAIN, GameUiAssets.I_MAIN_GOTO_MALL,
+                               GameUiAssets.I_MAIN_GOTO_TEAM),
             "recommend": frame_with(GameUiAssets.I_CHECK_MALL_RECOMMEND, back),
             "gift": frame_with(DailyTriflesAssets.I_GIFT_RECOMMEND, back),
             "room": frame_with(back),

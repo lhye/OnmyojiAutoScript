@@ -118,16 +118,23 @@ class SharedGuildMaskTests(unittest.TestCase):
                 self.assertFalse(rule.match(frame))
 
     def test_theme_switch_keeps_shared_mask_and_navigation_reference(self):
+        from tasks.GameUi.action import ActionSequence
         from tasks.GameUi.default_pages import page_main
         ref = GameUiAssets.I_MAIN_GOTO_GUILD
-        transitions = [t for t in page_main.transitions if t.action is ref]
+
+        def uses_guild(action):
+            if isinstance(action, ActionSequence):
+                return ref in action.actions
+            return action is ref
+
+        transitions = [t for t in page_main.transitions if uses_guild(t.action)]
         self.assertTrue(transitions)
         for theme in (ThemeType.COSTUME_THEME_XINYU_MINGXIAO, ThemeType.COSTUME_THEME_DEFAULT):
             apply_theme(theme)
             self.assertIs(GameUiAssets.I_MAIN_GOTO_GUILD, ref)
             self.assertEqual(ref.method, 'Masked template matching')
             self.assertIsNotNone(ref.mask)
-            self.assertTrue(all(t.action is ref for t in transitions))
+            self.assertTrue(all(uses_guild(t.action) for t in transitions))
             self.assertTrue(ref.match(self.frame('open')))
 
 

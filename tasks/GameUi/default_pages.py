@@ -54,6 +54,28 @@ def handle_login_page(task) -> bool:
     return LoginHandler(config=task.config, device=task.device).app_handle_login()
 
 
+# 新庭院皮肤（如鏖刀禁府）把底部导航收起为右下角摆件，点击摆件可展开/收起。
+C_MAIN_MENU_TOGGLE = RuleClick(roi_front=(1160, 620, 80, 85), roi_back=(1160, 620, 80, 85),
+                               name="C_MAIN_MENU_TOGGLE")
+
+
+def ensure_main_menu_bar(task) -> bool:
+    """确保大厅底部导航栏展开。
+
+    部分庭院皮肤的底部导航默认收起，收起时共享导航模板无法匹配；
+    已展开时不点击，避免把导航栏又收起。
+    """
+    probe = GameUiAssets.I_MAIN_GOTO_TEAM
+    if task.appear(probe):
+        return True
+    return task.ui_click(click=C_MAIN_MENU_TOGGLE, stop=probe, interval=0.8, timeout=6)
+
+
+def main_bar_action(asset):
+    """底部导航动作：先确保导航栏展开，再点击目标入口。"""
+    return sequence(ensure_main_menu_bar, asset, success_index=1)
+
+
 # 登录页。
 page_login = Page(SwitchAccountAssets.I_CHECK_LOGIN_FORM, category="global")
 page_login.add_enter_success_hooks(handle_login_page)
@@ -71,20 +93,20 @@ page_shikigami_records.add_enter_failure_hooks(conditional_action(condition=Game
                                                                   action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_shikigami_records.add_enter_success_hooks(GlobalGameAssets.I_UI_CANCEL_SAMLL)
 page_shikigami_records.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_shikigami_records->page_main")
-page_main.connect(page_shikigami_records, GameUiAssets.I_MAIN_GOTO_SHIKIGAMI_RECORDS, key="page_main->page_shikigami_records")
+page_main.connect(page_shikigami_records, main_bar_action(GameUiAssets.I_MAIN_GOTO_SHIKIGAMI_RECORDS), key="page_main->page_shikigami_records")
 
 page_onmyodo = Page(GameUiAssets.I_CHECK_ONMYODO, category="global")
 page_onmyodo.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                         action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_onmyodo.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_onmyodo->page_main")
-page_main.connect(page_onmyodo, GameUiAssets.I_MAIN_GOTO_ONMYODO, key="page_main->page_onmyodo")
+page_main.connect(page_onmyodo, main_bar_action(GameUiAssets.I_MAIN_GOTO_ONMYODO), key="page_main->page_onmyodo")
 
 page_friends = Page(GameUiAssets.I_CHECK_FRIENDS, category="global")
 page_friends.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                         action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_friends.connect(page_main, GlobalGameAssets.I_UI_BACK_RED, key="page_friends->page_main")
 page_friends.add_leave_failure_hooks(GlobalGameAssets.I_UI_BACK_RED)
-page_main.connect(page_friends, GameUiAssets.I_MAIN_GOTO_FRIENDS, key="page_main->page_friends")
+page_main.connect(page_friends, main_bar_action(GameUiAssets.I_MAIN_GOTO_FRIENDS), key="page_main->page_friends")
 
 page_daily = Page(GameUiAssets.I_CHECK_DAILY, category="global")
 page_daily.add_enter_failure_hooks(
@@ -93,7 +115,7 @@ page_daily.add_enter_failure_hooks(
                        action=lambda task: task.ui_click(click=random_click(ltrb=(False, False, False, True)),
                                                          stop=GlobalGameAssets.I_UI_BACK_YELLOW)))
 page_daily.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_daily->page_main")
-page_main.connect(page_daily, GameUiAssets.I_MAIN_GOTO_DAILY, key="page_main->page_daily")
+page_main.connect(page_daily, main_bar_action(GameUiAssets.I_MAIN_GOTO_DAILY), key="page_main->page_daily")
 
 page_mall = Page(any_of(GameUiAssets.I_CHECK_MALL, GameUiAssets.I_CHECK_MALL_PURPLE), category="global")
 page_mall.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
@@ -105,14 +127,14 @@ page_mall_recommend = Page([GameUiAssets.I_CHECK_MALL_RECOMMEND, GameUiAssets.I_
 page_mall_recommend.add_enter_success_hooks(GameUiAssets.I_AD_CLOSE_RED, GlobalGameAssets.I_UI_BACK_RED,
                                             GlobalGameAssets.I_UI_CANCEL_SAMLL)
 page_mall_recommend.connect(page_mall, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_mall_recommend->page_mall")
-page_main.connect(page_mall_recommend, GameUiAssets.I_MAIN_GOTO_MALL, key="page_main->page_mall_recommend")
+page_main.connect(page_mall_recommend, main_bar_action(GameUiAssets.I_MAIN_GOTO_MALL), key="page_main->page_mall_recommend")
 
 page_guild = Page(GameUiAssets.I_CHECK_GUILD, category="global")
 page_guild.add_enter_success_hooks(KekkaiUtilizeAssets.I_PLANT_TREE_CLOSE)
 page_guild.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                       action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_guild.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_guild->page_main")
-page_main.connect(page_guild, GameUiAssets.I_MAIN_GOTO_GUILD, key="page_main->page_guild")
+page_main.connect(page_guild, main_bar_action(GameUiAssets.I_MAIN_GOTO_GUILD), key="page_main->page_guild")
 
 # 摸鱼行动页面。
 page_touch_fish = Page(WeeklyTriflesAssets.I_CHECK_TOUCH_FISH, category="global")
@@ -135,20 +157,20 @@ page_team = Page(GameUiAssets.I_CHECK_TEAM, category="global")
 page_team.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                      action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_team.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_team->page_main")
-page_main.connect(page_team, GameUiAssets.I_MAIN_GOTO_TEAM, key="page_main->page_team")
+page_main.connect(page_team, main_bar_action(GameUiAssets.I_MAIN_GOTO_TEAM), key="page_main->page_team")
 
 page_collection = Page(GameUiAssets.I_CHECK_COLLECTION, category="global")
 page_collection.add_enter_success_hooks(GlobalGameAssets.I_UI_CANCEL_SAMLL)
 page_collection.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                            action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_collection.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_collection->page_main")
-page_main.connect(page_collection, GameUiAssets.I_MAIN_GOTO_COLLECTION, key="page_main->page_collection")
+page_main.connect(page_collection, main_bar_action(GameUiAssets.I_MAIN_GOTO_COLLECTION), key="page_main->page_collection")
 
 page_travel = Page(GameUiAssets.I_CHECK_TRAVEL, category="global")
 page_travel.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                        action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_travel.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_travel->page_main")
-page_main.connect(page_travel, GameUiAssets.I_MAIN_GOTO_TRAVEL, key="page_main->page_travel")
+page_main.connect(page_travel, main_bar_action(GameUiAssets.I_MAIN_GOTO_TRAVEL), key="page_main->page_travel")
 
 page_pet = Page(any_of(PetsAssets.I_PET_CLAW, PetsAssets.I_PET_FEAST), category="global")
 page_pet.connect(page_main, GlobalGameAssets.I_UI_BACK_CIRCLE, key="page_pet->page_main")

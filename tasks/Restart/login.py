@@ -82,21 +82,12 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
                 logger.info('Cancel continue battle')
                 continue
             # 确认进入庭院(优化：先检测加成图标确认在庭院页面，再检测式神录图标)
-            if self.appear(self.I_BUFF_1, interval=0.2):
-                # 加成图标存在，确认在庭院页面
-                if self.appear(self.I_MAIN_GOTO_SHIKIGAMI_RECORDS, interval=0.2):
-                    # 式神录图标存在，认为已在庭院
-                    if confirm_timer.reached():
-                        logger.info('Login to main confirm (buff and shikigami records button appears)')
-                        break
-                    login_success = True
-                else:
-                    # 式神录图标不存在，点击展开卷轴
-                    if self.click(self.C_LOGIN_SCROLL_CLOSE_AREA, interval=2):
-                        logger.info('Click scroll expand area because shikigami records not found')
-                        self.screenshot()
-                        continue
-                    confirm_timer.reset()
+            # 新版本大厅去掉了右侧卷轴，用主界面识别判断登录完成（皮肤差异由Costume替换）
+            if self.appear(self.I_CHECK_MAIN, interval=0.2):
+                if confirm_timer.reached():
+                    logger.info('Login to main confirm (main page appears)')
+                    break
+                login_success = True
 
             # 网络异常
             # if self.ocr_appear(self.O_LOGIN_NETWORK):
@@ -156,17 +147,13 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
                 logger.warning('Appear create account')
                 raise GameStuckError('Appear create account')
 
-            # 点击“进入游戏”速度过快会进入区服设置，同时需在检测I_LOGIN_8之前检测，因为新服图标会让I_LOGIN_8向右偏移导致永远无法检测成功
+            # 点击“进入游戏”速度过快会进入区服设置（新服图标会让点击位置偏移）
             # 同时修复了点击位置（之前是点击I_CHARACTARS而不是左边的区域）
             if self.appear(self.I_CHARACTARS, interval=1):
                 logger.info('误入区服设置')
                 # https://github.com/runhey/OnmyojiAutoScript/issues/585
                 self.device.click(x=106, y=535)
-                
-            # 点击’进入游戏‘
-            if not self.appear(self.I_LOGIN_8):
-                continue
-            
+
             # 登录体验服时，点击“进入游戏”速度过快，可能会出现体验服的弹窗
             if self.appear(self.I_EARLY_SERVER):
                 if self.appear_then_click(self.I_EARLY_SERVER_CANCEL):
